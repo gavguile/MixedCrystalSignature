@@ -1,3 +1,9 @@
 yappitest.py
 
 *.pyc
+
+*.o
+
+*.c
+
+*.so

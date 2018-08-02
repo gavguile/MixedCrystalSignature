@@ -5,10 +5,6 @@ Created on Wed Jun  1 08:52:49 2016
 @author: dietz
 """
 import numpy as np
-#import GenerateCrystalNeighborhood as gc
-#import matplotlib.pyplot as plt
-#from mpl_toolkits.mplot3d import Axes3D
-
 
 def add_gaussian_noise(datapoints, sigma, rnd_seed):
     "apply gaussian distributed noise to 3d pointcloud data"
@@ -36,5 +32,5 @@ if __name__ == '__main__':
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
-    
+
     plt.show()
