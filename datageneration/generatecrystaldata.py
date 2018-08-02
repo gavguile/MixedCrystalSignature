@@ -2,7 +2,7 @@
 """
 Created on Mon May 23 10:47:05 2016
 
-@author: tobias
+@author: magicdietz
 """
 import numpy as np
 
@@ -27,8 +27,8 @@ def fill_volume_bcc(x_limit, y_limit, z_limit):
     second_grid += 1./2.
     crystal = np.vstack((first_grid, second_grid)) * calibration_factor
     condition = ((crystal[:, 0] <= x_limit)&
-                     (crystal[:, 1] <= y_limit)&
-                     (crystal[:, 2] <= z_limit))
+                 (crystal[:, 1] <= y_limit)&
+                 (crystal[:, 2] <= z_limit))
     return crystal[condition]
 
 def fill_volume_fcc(x_limit, y_limit, z_limit):
@@ -50,8 +50,8 @@ def fill_volume_fcc(x_limit, y_limit, z_limit):
                          third_grid,
                          fourth_grid)) * calibration_factor
     condition = ((crystal[:, 0] <= x_limit)&
-                     (crystal[:, 1] <= y_limit)&
-                     (crystal[:, 2] <= z_limit))
+                 (crystal[:, 1] <= y_limit)&
+                 (crystal[:, 2] <= z_limit))
     return crystal[condition]
 
 def add_hcp_line(x_vec, y_coord, z_coord):
@@ -69,7 +69,7 @@ def add_hcp_layer(noa_x, noa_y, z_coord):
     for y_coord in np.arange(0, noa_y, 2*np.sin(np.pi / 3.)):
         first_line = add_hcp_line(x_vec, y_coord, z_coord)
         second_line = add_hcp_line(x_vec + 1./2.,
-                                 y_coord + np.sin(np.pi / 3.), z_coord)
+                                   y_coord + np.sin(np.pi / 3.), z_coord)
         crystal_volume = np.vstack((crystal_volume, first_line))
         crystal_volume = np.vstack((crystal_volume, second_line))
     return crystal_volume
@@ -97,17 +97,17 @@ def fill_volume_hcp(x_space, y_space, z_space):
                      (crystal[:, 2] <= z_space))
     return crystal[condition]
 
-if __name__=='__main__':
+if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
 
-    bcctest=fill_volume_bcc(5,5,5)
-    fcctest=fill_volume_fcc(5,5,5)
-    hcptest=fill_volume_hcp(5,5,5)
+    bcctest = fill_volume_bcc(5, 5, 5)
+    fcctest = fill_volume_fcc(5, 5, 5)
+    hcptest = fill_volume_hcp(5, 5, 5)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(bcctest[:,0],bcctest[:,1],bcctest[:,2])
+    ax.scatter(bcctest[:, 0], bcctest[:, 1], bcctest[:, 2])
     ax.set_title('bcc')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
@@ -115,7 +115,7 @@ if __name__=='__main__':
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(fcctest[:,0],fcctest[:,1],fcctest[:,2])
+    ax.scatter(fcctest[:, 0], fcctest[:, 1], fcctest[:, 2])
     ax.set_title('fcc')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
@@ -123,11 +123,10 @@ if __name__=='__main__':
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(hcptest[:,0],hcptest[:,1],hcptest[:,2])
+    ax.scatter(hcptest[:, 0], hcptest[:, 1], hcptest[:, 2])
     ax.set_title('hcp')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
 
     plt.show()
-
