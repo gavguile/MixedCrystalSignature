@@ -63,7 +63,11 @@ def calc_convex_hulls(indices,regions,point_region,vertices):
         voro_points=vertices[regions[point_region[i]]]
         conv_hulls.append(ConvexHull(voro_points,qhull_options="QJ"))
     return conv_hulls
-
+#
+# ein "polygon" ist hier einfach nur eine liste von punkten
+# das heißt np.array(np.array([[0,0,0],[base,0,0], [base / 2.,height,0]]))
+#
+    
 #cdef int vertex_index_strider(int index, int num_vertices):
 #    cdef int forward_index
 #    forward_index = index + 1
