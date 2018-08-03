@@ -6,26 +6,28 @@ Created on Thu Aug  2 13:22:23 2018
 @author: dietz
 """
 
-from sphharm import sph_harm_vectorized
-from scipy.special import lpmv
 from scipy.special import sph_harm
 import numpy as np
+import pandas as pd
 
-test=sph_harm_vectorized(0.3,0.3)
+def generate_m_l_arr(l,num_datapoints):
+    m_arr=np.arange(-l,l+1,dtype=np.int32)
+    m_arr=np.tile(m_arr,(num_datapoints,1))
+    return m_arr.transpose()
 
 
-xargs=np.zeros((2,),dtype=np.float64)
-xargs[0]=np.pi/5
-xargs[1]=np.pi/7
-yargs=np.zeros((2,),dtype=np.float64)
-yargs[0]=np.pi/8
-yargs[1]=np.pi/3
-margs=np.zeros((3,2),dtype=np.int32)+6
-margs[0]=1
-margs[1]=2
-largs=np.zeros((2),dtype=np.int32)+6
-test2=lpmv(margs,largs,xargs)
+n_data=10**2*12
+np.random.seed(0)
+theta_arr=np.random.rand(n_data)*2*np.pi
+phi_arr=np.random.rand(n_data)*np.pi
 
-test3=sph_harm(margs,largs,xargs,yargs)
+l=6
+m_arr=generate_m_l_arr(l,n_data)
+l_arr=np.zeros((n_data,),dtype=np.int32)+l
 
-print(sph_harm(1,6,np.pi/5,np.pi/8))
+test3=sph_harm(m_arr,l_arr,theta_arr,phi_arr)
+
+df=pd.DataFrame()
+
+df['test1']=[0.1,0.2]
+df['test2']=[1,2]
