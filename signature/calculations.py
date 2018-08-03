@@ -65,7 +65,7 @@ def calc_convex_hulls(indices,regions,point_region,vertices):
     return conv_hulls
 
 if __name__=='__main__':
-    from generatecrystaldata import fill_volume_fcc
+    from datageneration.generatecrystaldata import fill_volume_fcc
     from scipy.spatial import Voronoi
     import time
     

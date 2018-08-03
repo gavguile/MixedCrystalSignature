@@ -7,3 +7,5 @@ yappitest.py
 *.c
 
 *.so
+
+\.spyproject/
