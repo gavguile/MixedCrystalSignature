@@ -64,6 +64,33 @@ def calc_convex_hulls(indices,regions,point_region,vertices):
         conv_hulls.append(ConvexHull(voro_points,qhull_options="QJ"))
     return conv_hulls
 
+#cdef int vertex_index_strider(int index, int num_vertices):
+#    cdef int forward_index
+#    forward_index = index + 1
+#    if forward_index > (num_vertices - 1):
+#        forward_index = 0
+#    return forward_index
+#
+#@cython.boundscheck(False)
+#@cython.wraparound(False)
+#cdef planar_polygon_area(double[:,:] vertices):
+#    cdef int N = vertices.shape[0]
+#    cdef int i, forward_index, backward_index
+#    cdef double area = 0
+#    cdef double delta_x
+#
+#    for i in range(N):
+#        forward_index = vertex_index_strider(i, N)
+#        backward_index = i - 1
+#        if backward_index < 0:
+#            backward_index = N - 1
+#        delta_x = (vertices[forward_index, 0] -
+#                   vertices[backward_index, 0])
+#        area += delta_x * vertices[i, 1]
+#    area *= 0.5
+#    return area
+
+
 if __name__=='__main__':
     from datageneration.generatecrystaldata import fill_volume_fcc
     from scipy.spatial import Voronoi
