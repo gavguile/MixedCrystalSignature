@@ -95,6 +95,62 @@ def calc_convex_hulls(indices,regions,point_region,vertices):
 #    return area
 
 
+@njit(numba.complex128[:](numba.int32,numba.int32,numba.int32[:],numba.int32,numba.float64[:],numba.float64[:],numba.float64,numba.float64[:]))
+def calc_msm_qlm(lmax, len_l, l_vec,len_angles, theta_vec,phi_vec,total_area,areas):
+#    cdef size_t len_plm = 0
+#    cdef int len_result = 0
+#    cdef size_t index = 0
+#    cdef int m = 0
+#    cdef int j = 0
+#    cdef int index_l =0
+#    cdef int l = 0
+#    cdef double complex Ylm
+    len_plm = gsl_sf_legendre_array_n(lmax)
+    
+    for i in range(len_l):
+        len_result += (2*l_vec[i]+1)
+
+    cdef np.ndarray[double,ndim=1] plm_array = np.zeros(len_plm,dtype=np.float64)
+    
+    cdef np.ndarray[double complex,ndim=1] qlm_result = np.zeros(len_result,dtype=np.complex128)
+    for i in range(len_angles):
+        gsl_sf_legendre_array(GSL_SF_LEGENDRE_SPHARM,lmax, cos(theta_vec[i]),
+                              <double*> plm_array.data)
+        index_l=0
+        for j in range(len_l):
+            l=l_vec[j]
+            for m in range(-l,l+1):
+                if m < 0:
+                    index = gsl_sf_legendre_array_index(l,-m)
+                    Ylm = cexp(1j*m*phi_vec[i])*plm_array[index]
+                else:
+                    index= gsl_sf_legendre_array_index(l,m)
+                    Ylm = ((-1)**(m))*cexp(1j*m*phi_vec[i])*plm_array[index]
+                qlm_result[index_l+m+l]+=Ylm*areas[i]
+            index_l+=2*l+1
+            
+    for i in range(len_result):
+        qlm_result[i]/=total_area
+        
+    return qlm_result
+
+def calc_qlm_array(conv_hulls,voro_area_angles):
+    
+    args=[]
+    for voro_area_angle,hull in zip(voro_area_angles,conv_hulls):
+        args.append([voro_area_angle.shape[0],voro_area_angle[:,2],
+                     voro_area_angle[:,1],hull.area,voro_area_angle[:,0]])
+    
+    
+    calc_qlm_from_voro_part=partial(calc_qlm_from_voro,
+                                    max_l=self.max_l,l_vec=self.l_vec)
+    if self.n_proc > 1:    
+        self.qlm_arrays=np.array(self.p.map(calc_qlm_from_voro_part,args))
+    else:
+        self.qlm_arrays=np.array(list(map(calc_qlm_from_voro_part,args)))
+        
+    self.voro_vols=[hull.volume for hull in self.conv_hulls]
+
 if __name__=='__main__':
     from datageneration.generatecrystaldata import fill_volume_fcc
     from scipy.spatial import Voronoi
@@ -117,3 +173,4 @@ if __name__=='__main__':
     t=time.process_time()
     voro_area_angles=calc_voro_area_angles(conv_hulls)
     print('calc_voro_area_angles',time.process_time()-t)
+    
