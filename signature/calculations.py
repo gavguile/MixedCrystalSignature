@@ -63,37 +63,6 @@ def calc_convex_hulls(indices,regions,point_region,vertices):
         voro_points=vertices[regions[point_region[i]]]
         conv_hulls.append(ConvexHull(voro_points,qhull_options="QJ"))
     return conv_hulls
-#
-# ein "polygon" ist hier einfach nur eine liste von punkten
-# das heißt np.array(np.array([[0,0,0],[base,0,0], [base / 2.,height,0]]))
-#
-    
-#cdef int vertex_index_strider(int index, int num_vertices):
-#    cdef int forward_index
-#    forward_index = index + 1
-#    if forward_index > (num_vertices - 1):
-#        forward_index = 0
-#    return forward_index
-#
-#@cython.boundscheck(False)
-#@cython.wraparound(False)
-#cdef planar_polygon_area(double[:,:] vertices):
-#    cdef int N = vertices.shape[0]
-#    cdef int i, forward_index, backward_index
-#    cdef double area = 0
-#    cdef double delta_x
-#
-#    for i in range(N):
-#        forward_index = vertex_index_strider(i, N)
-#        backward_index = i - 1
-#        if backward_index < 0:
-#            backward_index = N - 1
-#        delta_x = (vertices[forward_index, 0] -
-#                   vertices[backward_index, 0])
-#        area += delta_x * vertices[i, 1]
-#    area *= 0.5
-#    return area
-
 
 @numba.njit(numba.complex128[:](numba.int64,numba.int32[:],numba.float64[:],numba.float64[:],numba.float64,numba.float64[:]))
 def calc_msm_qlm(len_array,l_vec,theta_vec,phi_vec,total_area,areas):
@@ -123,8 +92,7 @@ def calc_qlm_array(total_areas,voro_area_angles,l_vec):
     qlm_arrays=np.zeros((len(total_areas),len_array),dtype=np.complex128) 
     
     for i in range(len(total_areas)):
-        qlm_array=calc_msm_qlm(len_array,l_vec,voro_area_angles[i][:,2],voro_area_angles[i][:,1],total_areas[i],voro_area_angles[i][:,0]) 
-        qlm_arrays[i,:]=qlm_array 
+        qlm_arrays[i,:]=calc_msm_qlm(len_array,l_vec,voro_area_angles[i][:,2],voro_area_angles[i][:,1],total_areas[i],voro_area_angles[i][:,0])  
     
     return qlm_arrays
 
@@ -132,6 +100,8 @@ if __name__=='__main__':
     from datageneration.generatecrystaldata import fill_volume_fcc
     from scipy.spatial import Voronoi
     import time
+    
+    t_tot=time.process_time()
     
     datapoints=fill_volume_fcc(20, 20, 20)
     volume=[[2,18],[2,18],[2,18]]
@@ -157,3 +127,5 @@ if __name__=='__main__':
     voro_vols=[hull.volume for hull in conv_hulls]
     qlm_arrays=calc_qlm_array(total_areas,voro_area_angles,l_vec)
     print('calc_qlm_array',time.process_time()-t)
+    
+    print('total time:',time.process_time()-t_tot)
