@@ -25,7 +25,6 @@ def get_inner_volume_bool_vec(datapoints,volume):
 
 @numba.njit(numba.float64(numba.float64[:],numba.float64[:]))
 def calc_area(u,v):
-    #cdef double cx,cy,cz
     cx=u[1]*v[2]-u[2]*v[1]
     cy=u[2]*v[0]-u[0]*v[2]
     cz=u[0]*v[1]-u[1]*v[0]
@@ -134,22 +133,22 @@ def calc_msm_qlm(lmax, len_l, l_vec,len_angles, theta_vec,phi_vec,total_area,are
         
     return qlm_result
 
-def calc_qlm_array(conv_hulls,voro_area_angles):
-    
-    args=[]
-    for voro_area_angle,hull in zip(voro_area_angles,conv_hulls):
-        args.append([voro_area_angle.shape[0],voro_area_angle[:,2],
-                     voro_area_angle[:,1],hull.area,voro_area_angle[:,0]])
-    
-    
-    calc_qlm_from_voro_part=partial(calc_qlm_from_voro,
-                                    max_l=self.max_l,l_vec=self.l_vec)
-    if self.n_proc > 1:    
-        self.qlm_arrays=np.array(self.p.map(calc_qlm_from_voro_part,args))
-    else:
-        self.qlm_arrays=np.array(list(map(calc_qlm_from_voro_part,args)))
-        
-    self.voro_vols=[hull.volume for hull in self.conv_hulls]
+#def calc_qlm_array(conv_hulls,voro_area_angles):
+#    
+#    args=[]
+#    for voro_area_angle,hull in zip(voro_area_angles,conv_hulls):
+#        args.append([voro_area_angle.shape[0],voro_area_angle[:,2],
+#                     voro_area_angle[:,1],hull.area,voro_area_angle[:,0]])
+#    
+#    
+#    calc_qlm_from_voro_part=partial(calc_qlm_from_voro,
+#                                    max_l=self.max_l,l_vec=self.l_vec)
+#    if self.n_proc > 1:    
+#        self.qlm_arrays=np.array(self.p.map(calc_qlm_from_voro_part,args))
+#    else:
+#        self.qlm_arrays=np.array(list(map(calc_qlm_from_voro_part,args)))
+#        
+#    self.voro_vols=[hull.volume for hull in self.conv_hulls]
 
 if __name__=='__main__':
     from datageneration.generatecrystaldata import fill_volume_fcc
