@@ -10,7 +10,7 @@ import numba
 from cmath import exp
 from math import sin,cos 
  
-@numba.njit(numba.complex128(numba.int64,numba.int64,numba.float64,numba.float64))
+@numba.njit(numba.complex128(numba.int64,numba.int64,numba.float64,numba.float64),nogil=True)
 def sph_harm_hard(l,m,theta,phi):
     "hard coded spherical harmonics extracted from sympy"
     if l==0 and m==0: 
