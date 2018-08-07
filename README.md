@@ -16,8 +16,9 @@ This repository is still incomplete
  - Multiprocessing (Optional)
  - Numba (required, planned to be Optional)
 
-# Heavy WIP
+# Installation
+Working on it
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTEyMDMxNzAyMCw3NDEzOTA1ODIsLTU4Mj
+eyJoaXN0b3J5IjpbMTUxMDE5OTY5Niw3NDEzOTA1ODIsLTU4Mj
 E3ODY5MywxODgxMTQ4MTBdfQ==
 -->
