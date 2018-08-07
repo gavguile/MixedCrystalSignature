@@ -15,7 +15,7 @@ from functools import partial
 
 try:
     import multiprocessing as mp
-    MP_EXISTS=True
+    MP_EXISTS=False
 except ImportError:
     MP_EXISTS=False
 
@@ -109,6 +109,27 @@ def calc_qlm_array(total_areas,voro_area_angles,l_vec):
     
     return qlm_arrays
 
+@numba.njit(numba.float64(numba.int64,numba.complex128[:],numba.int64,numba.complex128[:,:]))
+def calc_si(l,qlms,len_neigh,qlms_neigh):
+    
+    qlm_sum=0.
+    for m in range(2*l+1):
+        qlm_sum+=abs(qlms[m])**2
+    qlm_sum=sqrt(qlm_sum)
+    
+    si=0.
+    for i in range(len_neigh):
+        qlm_sum_neigh=0.
+        for m in range(2*l+1):
+            qlm_sum_neigh+=abs(qlms_neigh[i,m])**2
+        qlm_sum_neigh=sqrt(qlm_sum_neigh)
+        si_inner=0.
+        for m in range(2*l+1):
+            si_inner+=(qlms[m]*qlms_neigh[i,m].conjugate()).real
+        si+=si_inner/(qlm_sum*qlm_sum_neigh)
+
+    return si/len_neigh
+
 if __name__=='__main__':
     from datageneration.generatecrystaldata import fill_volume_fcc
     from scipy.spatial import Voronoi
@@ -116,8 +137,9 @@ if __name__=='__main__':
     
     t_tot=time.process_time()
     
-    datapoints=fill_volume_fcc(50, 50, 50)
-    volume=[[2,18],[2,18],[2,18]]
+    size=[15,15,15]
+    datapoints=fill_volume_fcc(size[0], size[1], size[2])
+    volume=[[2,size[i]-2] for i in range(3)]
     
     l_vec=np.array([2,4,6],dtype=np.int32) 
     inner_bool = get_inner_volume_bool_vec(datapoints,volume)
