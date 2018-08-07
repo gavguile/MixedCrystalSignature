@@ -4,7 +4,8 @@ Program to locally classify crystalline structures in 3D pointcloud data as retr
 This repository is still incomplete
 
 # Planned features
-- 
+- Calculation of a feature vector described in this [Paper](https://doi.org/10.1103/PhysRevE.96.011301)
+- Training of a ML algorithm with artificial crystal lat
 
 # Planned Dependencies
 
@@ -16,6 +17,6 @@ This repository is still incomplete
 
 # Heavy WIP
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNzQxMzkwNTgyLC01ODIxNzg2OTMsMTg4MT
-E0ODEwXX0=
+eyJoaXN0b3J5IjpbLTI2NDgyMzc4Myw3NDEzOTA1ODIsLTU4Mj
+E3ODY5MywxODgxMTQ4MTBdfQ==
 -->
