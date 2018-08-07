@@ -6,7 +6,7 @@ This repository is still incomplete
 # Planned features
 - Calculation of a feature vector described in this [Paper](https://doi.org/10.1103/PhysRevE.96.011301)
 - Training of a neural network with artificial crystal lattices of fcc, bcc, and hcp
-- Examples for easy 
+- Examples and a Tutorial
 - 
 
 # Planned Dependencies
@@ -19,6 +19,6 @@ This repository is still incomplete
 
 # Heavy WIP
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbODQ3OTIwNDM3LDc0MTM5MDU4MiwtNTgyMT
-c4NjkzLDE4ODExNDgxMF19
+eyJoaXN0b3J5IjpbMTk5MDg3NzcyNCw3NDEzOTA1ODIsLTU4Mj
+E3ODY5MywxODgxMTQ4MTBdfQ==
 -->
