@@ -13,9 +13,9 @@ from math import sqrt,atan2,acos,pi
 from sphericalharmonics.sphharmhard import sph_harm_hard
 from functools import partial
 
-MP_EXISTS=True
 try:
     import multiprocessing as mp
+    MP_EXISTS=True
 except ImportError:
     MP_EXISTS=False
 
@@ -72,6 +72,8 @@ def calc_convex_hulls(indices,regions,point_region,vertices):
         p=mp.Pool()
         return p.map(partial(ConvexHull,qhull_options="QJ"),voro_points_list,chunksize=400)
         p.close()
+        p.terminate()
+        p.join()
     else:
         return [ConvexHull(voro_points_list[i],qhull_options="QJ") for i in indices]
 
@@ -114,7 +116,7 @@ if __name__=='__main__':
     
     t_tot=time.process_time()
     
-    datapoints=fill_volume_fcc(20, 20, 20)
+    datapoints=fill_volume_fcc(50, 50, 50)
     volume=[[2,18],[2,18],[2,18]]
     
     l_vec=np.array([2,4,6],dtype=np.int32) 
