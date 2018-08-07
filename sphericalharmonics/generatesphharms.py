@@ -23,7 +23,7 @@ for n in range(0,7):
                 generated_code += 'if '
             else:
                 generated_code += 'elif '
-            generated_code +='l=={:d} and m=={:d}: \n'.format(n,m)
+            generated_code +='l == {:d} and m == {:d}:\n'.format(n,m)
             
         
         
