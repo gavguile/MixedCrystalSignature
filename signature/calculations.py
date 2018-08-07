@@ -11,6 +11,13 @@ from scipy.spatial import ConvexHull
 import numba
 from math import sqrt,atan2,acos,pi
 from sphericalharmonics.sphharmhard import sph_harm_hard
+from functools import partial
+
+MP_EXISTS=True
+try:
+    import multiprocessing as mp
+except ImportError:
+    MP_EXISTS=False
 
 def get_inner_volume_bool_vec(datapoints,volume):
     x_min, x_max = volume[0]
@@ -58,11 +65,15 @@ def calc_voro_area_angles(conv_hulls):
     return voro_area_angles
 
 def calc_convex_hulls(indices,regions,point_region,vertices):
-    conv_hulls=[]
-    for i in indices:
-        voro_points=vertices[regions[point_region[i]]]
-        conv_hulls.append(ConvexHull(voro_points,qhull_options="QJ"))
-    return conv_hulls
+    
+    voro_points_list=[vertices[regions[point_region[i]]] for i in indices]
+    
+    if MP_EXISTS:
+        p=mp.Pool()
+        return p.map(partial(ConvexHull,qhull_options="QJ"),voro_points_list,chunksize=400)
+        p.close()
+    else:
+        return [ConvexHull(voro_points_list[i],qhull_options="QJ") for i in indices]
 
 @numba.njit(numba.complex128[:](numba.int64,numba.int32[:],numba.float64[:],numba.float64[:],numba.float64,numba.float64[:]))
 def calc_msm_qlm(len_array,l_vec,theta_vec,phi_vec,total_area,areas):
