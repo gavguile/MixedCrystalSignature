@@ -20,33 +20,41 @@ except ImportError:
 class MixedCrystalSignature:
     """ This is the docstring """
     
-    nbins_distances=12
-    l_vec=np.array([2,4,6],dtype=np.int32)
+    NBINS_DISTANCES=12
+    L_VEC=np.array([2,4,6],dtype=np.int32)
+    MAX_L=np.max(L_VEC)
 
-    def __init__(self,datapoints,volume,solid_thresh=0.652):
-        self.max_l=np.max(self.l_vec)
+    def __init__(self,data,solid_thresh=0.652):
         self.solid_thresh=solid_thresh
+        self.inner_bool=None
+        self.indices=None
+        self.outsider_indices=None
+        self.insider_indices=None
+        self.voro=None
+        self.neighborlist=None
+        self.conv_hulls=None
+        self.voro_vols=None
+        self.qlm_arrays=None
+        
+        self.set_datapoints(data)
 
         if MP_EXISTS:
             self.p = mp.Pool()
         
         self.len_qlm=0
         self.idx_qlm=[]
-        for i,l in enumerate(self.l_vec):
+        for i,l in enumerate(self.L_VEC):
             self.idx_qlm.append(np.arange(self.len_qlm,self.len_qlm+2*l+1,dtype=np.int32))
-            self.len_qlm += (2*self.l_vec[i]+1)
-            
-        self.set_datapoints(datapoints)
-        self.set_inner_volume(volume)
+            self.len_qlm += (2*self.L_VEC[i]+1)
     
     def __del__(self):
         if MP_EXISTS:
             self.p.close()
             self.p.join()
             
-    def set_datapoints(self,datapoints):
-        self.datapoints=datapoints
-        self.inner_bool=np.ones(len(datapoints),dtype=np.bool)
+    def set_datapoints(self,data):
+        self.datapoints=data
+        self.inner_bool=np.ones(self.datapoints.shape[0],dtype=np.bool)
         self.calc_inner_outer_indices()
         
     def calc_voro(self):
@@ -54,7 +62,7 @@ class MixedCrystalSignature:
         
     def calc_neighborlist(self):
         ridge_points=self.voro.ridge_points
-        self.neighborlist=[[] for _ in range(len(self.datapoints))]
+        self.neighborlist=[[] for _ in range(self.datapoints.shape[0])]
         for j in range(len(ridge_points)):
             if ridge_points[j,1] not in self.neighborlist[ridge_points[j,0]]:
                 self.neighborlist[ridge_points[j,0]].append(ridge_points[j,1])
@@ -62,7 +70,7 @@ class MixedCrystalSignature:
                 self.neighborlist[ridge_points[j,1]].append(ridge_points[j,0])
         
     def calc_inner_outer_indices(self):
-        self.indices = np.arange(0, len(self.datapoints), dtype=np.int32)
+        self.indices = np.arange(0, self.datapoints.shape[0], dtype=np.int32)
         self.outsider_indices = self.indices[np.invert(self.inner_bool)]
         self.insider_indices = self.indices[self.inner_bool]
         
@@ -113,19 +121,29 @@ class MixedCrystalSignature:
         self.voro_vols=[hull.volume for hull in self.conv_hulls]
         
         len_array=0 
-        for i in range(self.l_vec.shape[0]): 
-            len_array += (2*self.l_vec[i]+1) 
+        for i in range(self.L_VEC.shape[0]): 
+            len_array += (2*self.L_VEC[i]+1) 
             
         self.qlm_arrays=np.zeros((len(total_areas),len_array),dtype=np.complex128) 
         
         for i in range(len(total_areas)):
             self.qlm_arrays[i,:]=calc.calc_msm_qlm(len_array,
-                                                   self.l_vec,
+                                                   self.L_VEC,
                                                    voro_area_angles[i][:,2],
                                                    voro_area_angles[i][:,1],
                                                    total_areas[i],
                                                    voro_area_angles[i][:,0])
-
+    
+    def calc_struct_order(self):
+        self.solid_bool=np.zeros(self.datapoints.shape[0],dtype=np.bool)
+        self.struct_order=np.zeros(self.datapoints.shape[0],dtype=np.float64)
+        for i in self.insider_indices:
+            voro_neighbors = np.array(self.neighborlist[i],dtype=np.int64)
+            qlm_array_neighbors = self.qlm_arrays[voro_neighbors][:,self.idx_qlm[2]]
+            num_neighbors=len(self.neighborlist[i])
+            si=calc.calc_si(6,self.qlm_arrays[i,self.idx_qlm[2]],num_neighbors,qlm_array_neighbors)
+            self.solid_bool[i]=(si>=self.solid_thresh)
+            self.struct_order[i]=si
 
 if __name__ == '__main__':
     from datageneration.generatecrystaldata import fill_volume_fcc
@@ -133,14 +151,19 @@ if __name__ == '__main__':
     
     t_tot=time.process_time()
     
-    size=[20,20,20]
+    size=[10,10,10]
     datapoints=fill_volume_fcc(size[0], size[1], size[2])
     volume=[[2,size[i]-2] for i in range(3)]
     
-    mcs=MixedCrystalSignature(datapoints,volume)
+    mcs=MixedCrystalSignature(datapoints)
+    mcs.set_inner_volume(volume)
     
     t=time.process_time()
     mcs.calc_qlm_array()
     print('calc_qlm_array',time.process_time()-t)
+    
+    t=time.process_time()
+    mcs.calc_struct_order()
+    print('calc_struct_order',time.process_time()-t)
     
     print('total time:',time.process_time()-t_tot)
