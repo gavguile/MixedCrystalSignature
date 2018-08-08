@@ -86,10 +86,10 @@ def calc_si(l, qlms, len_neigh, qlms_neigh):
 
     return si/len_neigh
 
-@numba.njit(numba.float64[:,:](numba.int32[:], numba.complex128[:,:]))
-def calc_qls_from_qlm_arrays(l_vec,qlm_arrays):
+@numba.njit(numba.float64[:, :](numba.int32[:], numba.complex128[:, :]))
+def calc_qls_from_qlm_arrays(l_vec, qlm_arrays):
     "calculates the final ql (over all m) from qlm data"
-    len_l=l_vec.shape[0]
+    len_l = l_vec.shape[0]
     
     result = np.zeros((qlm_arrays.shape[0], len_l), dtype=np.float64)
     
@@ -104,8 +104,64 @@ def calc_qls_from_qlm_arrays(l_vec,qlm_arrays):
             qlm_sum = 0.
             
             for m in range(-l, l+1):
-                qlm_sum += abs(qlm_arrays[i,index_l+m+l])**2
-            result[i,j] = sqrt(4.*pi/(2.*l+1)*qlm_sum)
+                qlm_sum += abs(qlm_arrays[i, index_l+m+l])**2
+            result[i, j] = sqrt(4.*pi/(2.*l+1)*qlm_sum)
             index_l += 2*l+1
 
+    return result
+
+@numba.njit(numba.float64[:](numba.complex128[:], numba.float64[:], numba.complex128[:], numba.float64[:]))
+def calc_w4_w6_from_qlm_array(q4m_arr, wignerw4, q6m_arr, wignerw6):
+    result = np.zeros(2,dtype=np.float64)
+    
+    i=0
+    
+    w4_msum=0.
+    w4=0.
+    
+    for i in range(1,5):
+        w4_msum+=wignerw4[i]*(q4m_arr[i+4]*q4m_arr[i+4].conjugate()).real
+    w4_msum*=6.
+    
+    w4=q4m_arr[4].real
+    w4*=wignerw4[0]*(q4m_arr[4]*q4m_arr[4].conjugate()).real + w4_msum
+    w4+=12.*wignerw4[5]*(q4m_arr[8].conjugate()*q4m_arr[5]*q4m_arr[7]).real
+    w4-=12.*wignerw4[6]*(q4m_arr[7].conjugate()*q4m_arr[5]*q4m_arr[6]).real
+    w4+= 6.*wignerw4[7]*(q4m_arr[8].conjugate()*q4m_arr[6]*q4m_arr[6]).real
+    w4+= 6.*wignerw4[8]*(q4m_arr[6].conjugate()*q4m_arr[5]*q4m_arr[5]).real
+    
+    q4=0.
+    for i in range(9):
+        q4+=(q4m_arr[i]*q4m_arr[i].conjugate()).real
+    q4=sqrt(q4)
+    
+    result[0]=w4/q4**3
+    
+    #w6
+    w6_msum=0.
+    w6=0.
+    
+    for i in range(1,7):
+        w6_msum+=wignerw6[i]*(q6m_arr[i+6]*q6m_arr[i+6].conjugate()).real
+    w6_msum*=6.
+    
+    w6=q6m_arr[6].real
+    w6*=wignerw6[0]*(q6m_arr[6]*q6m_arr[6].conjugate()).real + w6_msum
+    w6+= 12.*wignerw6[7]*(q6m_arr[12].conjugate()*q6m_arr[7]*q6m_arr[11]).real
+    w6+= 12.*wignerw6[8]*(q6m_arr[12].conjugate()*q6m_arr[8]*q6m_arr[10]).real
+    w6+= 12.*wignerw6[9]*(q6m_arr[10].conjugate()*q6m_arr[7]*q6m_arr[9]).real
+    w6-=12.*wignerw6[10]*(q6m_arr[11].conjugate()*q6m_arr[7]*q6m_arr[10]).real
+    w6-=12.*wignerw6[11]*(q6m_arr[11].conjugate()*q6m_arr[8]*q6m_arr[9]).real
+    w6-=12.*wignerw6[12]*(q6m_arr[9].conjugate()*q6m_arr[7]*q6m_arr[8]).real
+    w6+= 6.*wignerw6[13]*(q6m_arr[12].conjugate()*q6m_arr[9]*q6m_arr[9]).real
+    w6+= 6.*wignerw6[14]*(q6m_arr[10].conjugate()*q6m_arr[8]*q6m_arr[8]).real
+    w6+= 6.*wignerw6[15]*(q6m_arr[8].conjugate()*q6m_arr[7]*q6m_arr[7]).real
+    
+    q6=0.
+    for i in range(13):
+        q6+=(q6m_arr[i]*q6m_arr[i].conjugate()).real
+    q6=sqrt(q6)
+
+    result[1]=w6/q6**3
+    
     return result
