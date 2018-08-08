@@ -7,6 +7,7 @@ Created on Wed Apr 1 15:00:00 2018
 """
 
 import numpy as np
+import pandas as pd
 from scipy.spatial import Voronoi, ConvexHull
 import signature.calculations as calc
 from functools import partial
@@ -35,6 +36,7 @@ class MixedCrystalSignature:
         self.conv_hulls=None
         self.voro_vols=None
         self.qlm_arrays=None
+        self.signature=pd.DataFrame()
         
         self.set_datapoints(data)
 
@@ -117,7 +119,7 @@ class MixedCrystalSignature:
         self.calc_convex_hulls()
         voro_area_angles=self.calc_voro_area_angles()
         
-        total_areas=[hull.volume for hull in self.conv_hulls]
+        total_areas=[hull.area for hull in self.conv_hulls]
         self.voro_vols=[hull.volume for hull in self.conv_hulls]
         
         len_array=0 
@@ -144,6 +146,36 @@ class MixedCrystalSignature:
             si=calc.calc_si(6,self.qlm_arrays[i,self.idx_qlm[2]],num_neighbors,qlm_array_neighbors)
             self.solid_bool[i]=(si>=self.solid_thresh)
             self.struct_order[i]=si
+            
+    def calc_msm(self):
+        ql_array=calc.calc_qls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.insider_indices]).transpose()
+        self.signature['q4']=ql_array[mcs.L_VEC==4][0]
+        self.signature['q6']=ql_array[mcs.L_VEC==6][0]
+        
+#    def calc_sign_array(self):
+#        datalist=[]
+#        self.solid_indices=self.indices[np.logical_and(self.inner_bool,self.solid_bool)]
+#        for i in self.solid_indices:
+#            voro_neighbors = np.array(self.neighborlist[i],dtype=np.int64)
+#            if len(voro_neighbors >= 6):
+#                qlm_array=self.qlm_arrays[i]
+#                datapoint=self.datapoints[i]
+#                neighborpoints=self.datapoints[voro_neighbors]
+#                datalist.append([voro_neighbors,qlm_array,datapoint,neighborpoints,
+#                                 self.conv_hulls[i].area,self.voro_area_angles[i][:,0],
+#                                 self.conv_hulls[i].equations[:,0:3]])
+#            else:
+#                print('Warning: low number of neighbors')
+#    
+#        calc_particle_signature_part=partial(calc_particle_signature,sign_dimension=self.sign_dimension,
+#                                             idx_qlm=self.idx_qlm, si_threshold=self.si_threshold,
+#                                             nbins_distances=self.nbins_distances, l_vec=self.l_vec,
+#                                             wignerw4=self.wignerw4, wignerw6=self.wignerw6)
+#        if self.n_proc > 1:
+#            self.sign_array=np.array(self.p.map(calc_particle_signature_part,datalist))
+#        else:
+#            self.sign_array=np.array(list(map(calc_particle_signature_part,datalist)))
+#        return self.sign_array
 
 if __name__ == '__main__':
     from datageneration.generatecrystaldata import fill_volume_fcc
@@ -165,5 +197,9 @@ if __name__ == '__main__':
     t=time.process_time()
     mcs.calc_struct_order()
     print('calc_struct_order',time.process_time()-t)
+    
+    t=time.process_time()
+    mcs.calc_msm()
+    print('calc_msm',time.process_time()-t)
     
     print('total time:',time.process_time()-t_tot)
