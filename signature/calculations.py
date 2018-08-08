@@ -85,3 +85,27 @@ def calc_si(l, qlms, len_neigh, qlms_neigh):
         si += si_inner/(qlm_sum*qlm_sum_neigh)
 
     return si/len_neigh
+
+@numba.njit(numba.float64[:,:](numba.int32[:], numba.complex128[:,:]))
+def calc_qls_from_qlm_arrays(l_vec,qlm_arrays):
+    "calculates the final ql (over all m) from qlm data"
+    len_l=l_vec.shape[0]
+    
+    result = np.zeros((qlm_arrays.shape[0], len_l), dtype=np.float64)
+    
+    for i in range(qlm_arrays.shape[0]):
+        j = 0
+        m = 0
+        l = 0
+        index_l = 0
+        qlm_sum = 0.
+        for j in range(len_l):
+            l = l_vec[j]
+            qlm_sum = 0.
+            
+            for m in range(-l, l+1):
+                qlm_sum += abs(qlm_arrays[i,index_l+m+l])**2
+            result[i,j] = sqrt(4.*pi/(2.*l+1)*qlm_sum)
+            index_l += 2*l+1
+
+    return result
