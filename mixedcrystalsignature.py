@@ -160,11 +160,14 @@ class MixedCrystalSignature:
         self.signature['w6']=wl_array[mcs.L_VEC==6][0]
     
     def calc_bond_angles(self):
-        return calc.calc_bond_angles(self.insider_indices,self.neighborlist,self.datapoints)
+        bond_angles=calc.calc_bond_angles(self.insider_indices,self.neighborlist,self.datapoints)[self.insider_indices]
+        for dim in range(bond_angles.shape[1]):
+            self.signature['ba{:d}'.format(dim)]=bond_angles[:,dim]
         
     def calc_hist_distances(self):
-        return calc.calc_hist_distances(self.insider_indices,self.neighborlist,self.datapoints,self.voro_vols)
-
+        hist_distances=calc.calc_hist_distances(self.insider_indices,self.neighborlist,self.datapoints,self.voro_vols)[self.insider_indices]
+        for dim in range(hist_distances.shape[1]):
+            self.signature['dist{:d}'.format(dim)]=hist_distances[:,dim]
 
 #    def calc_sign_array(self):
 #        datalist=[]
@@ -197,8 +200,8 @@ if __name__ == '__main__':
     
     t_tot=time.process_time()
     
-    size=[20,20,20]
-    datapoints=gc.fill_volume_bcc(size[0], size[1], size[2])
+    size=[15,15,15]
+    datapoints=gc.fill_volume_hcp(size[0], size[1], size[2])
     volume=[[2,size[i]-2] for i in range(3)]
     
     mcs=MixedCrystalSignature(datapoints)
@@ -217,11 +220,11 @@ if __name__ == '__main__':
     print('calc_msm',time.process_time()-t)
     
     t=time.process_time()
-    mcs.calc_bond_angles()
+    angles=mcs.calc_bond_angles()
     print('calc_bond_angles',time.process_time()-t)
     
     t=time.process_time()
-    mcs.calc_hist_distances()
+    dists=mcs.calc_hist_distances()
     print('calc_hist_distances',time.process_time()-t)
     
     print('total time:',time.process_time()-t_tot)

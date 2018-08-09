@@ -227,4 +227,4 @@ def fast_hist(data, bin_edges):
 
 @numba.njit(numba.float64[:](numba.float64,numba.int64))
 def fast_edges(d0,nbins_distances):
-    return np.linspace(0,d0*1.5,nbins_distances+1)
+    return np.linspace(0.5*d0,d0*1.5,nbins_distances+1)
