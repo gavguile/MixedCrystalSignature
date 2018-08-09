@@ -158,8 +158,13 @@ class MixedCrystalSignature:
         self.signature['w2']=wl_array[mcs.L_VEC==2][0]
         self.signature['w4']=wl_array[mcs.L_VEC==4][0]
         self.signature['w6']=wl_array[mcs.L_VEC==6][0]
-        
     
+    def calc_bond_angles(self):
+        return calc.calc_bond_angles(self.insider_indices,self.neighborlist,self.datapoints)
+        
+    def calc_hist_distances(self):
+        return calc.calc_hist_distances(self.insider_indices,self.neighborlist,self.datapoints,self.voro_vols)
+
 
 #    def calc_sign_array(self):
 #        datalist=[]
@@ -210,5 +215,13 @@ if __name__ == '__main__':
     t=time.process_time()
     mcs.calc_msm()
     print('calc_msm',time.process_time()-t)
+    
+    t=time.process_time()
+    mcs.calc_bond_angles()
+    print('calc_bond_angles',time.process_time()-t)
+    
+    t=time.process_time()
+    mcs.calc_hist_distances()
+    print('calc_hist_distances',time.process_time()-t)
     
     print('total time:',time.process_time()-t_tot)
