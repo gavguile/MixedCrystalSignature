@@ -10,6 +10,8 @@ from math import sqrt, atan2, acos, pi
 import numpy as np
 import numba
 from sphericalharmonics.sphharmhard import sph_harm_hard
+from sympy.physics.wigner import wigner_3j
+from sympy import N
 
 @numba.njit(numba.float64(numba.float64[:], numba.float64[:]))
 def calc_area(u, v):
@@ -110,58 +112,69 @@ def calc_qls_from_qlm_arrays(l_vec, qlm_arrays):
 
     return result
 
-@numba.njit(numba.float64[:](numba.complex128[:], numba.float64[:], numba.complex128[:], numba.float64[:]))
-def calc_w4_w6_from_qlm_array(q4m_arr, wignerw4, q6m_arr, wignerw6):
-    result = np.zeros(2,dtype=np.float64)
-    
-    i=0
-    
-    w4_msum=0.
-    w4=0.
-    
-    for i in range(1,5):
-        w4_msum+=wignerw4[i]*(q4m_arr[i+4]*q4m_arr[i+4].conjugate()).real
-    w4_msum*=6.
-    
-    w4=q4m_arr[4].real
-    w4*=wignerw4[0]*(q4m_arr[4]*q4m_arr[4].conjugate()).real + w4_msum
-    w4+=12.*wignerw4[5]*(q4m_arr[8].conjugate()*q4m_arr[5]*q4m_arr[7]).real
-    w4-=12.*wignerw4[6]*(q4m_arr[7].conjugate()*q4m_arr[5]*q4m_arr[6]).real
-    w4+= 6.*wignerw4[7]*(q4m_arr[8].conjugate()*q4m_arr[6]*q4m_arr[6]).real
-    w4+= 6.*wignerw4[8]*(q4m_arr[6].conjugate()*q4m_arr[5]*q4m_arr[5]).real
-    
-    q4=0.
-    for i in range(9):
-        q4+=(q4m_arr[i]*q4m_arr[i].conjugate()).real
-    q4=sqrt(q4)
-    
-    result[0]=w4/q4**3
-    
-    #w6
-    w6_msum=0.
-    w6=0.
-    
-    for i in range(1,7):
-        w6_msum+=wignerw6[i]*(q6m_arr[i+6]*q6m_arr[i+6].conjugate()).real
-    w6_msum*=6.
-    
-    w6=q6m_arr[6].real
-    w6*=wignerw6[0]*(q6m_arr[6]*q6m_arr[6].conjugate()).real + w6_msum
-    w6+= 12.*wignerw6[7]*(q6m_arr[12].conjugate()*q6m_arr[7]*q6m_arr[11]).real
-    w6+= 12.*wignerw6[8]*(q6m_arr[12].conjugate()*q6m_arr[8]*q6m_arr[10]).real
-    w6+= 12.*wignerw6[9]*(q6m_arr[10].conjugate()*q6m_arr[7]*q6m_arr[9]).real
-    w6-=12.*wignerw6[10]*(q6m_arr[11].conjugate()*q6m_arr[7]*q6m_arr[10]).real
-    w6-=12.*wignerw6[11]*(q6m_arr[11].conjugate()*q6m_arr[8]*q6m_arr[9]).real
-    w6-=12.*wignerw6[12]*(q6m_arr[9].conjugate()*q6m_arr[7]*q6m_arr[8]).real
-    w6+= 6.*wignerw6[13]*(q6m_arr[12].conjugate()*q6m_arr[9]*q6m_arr[9]).real
-    w6+= 6.*wignerw6[14]*(q6m_arr[10].conjugate()*q6m_arr[8]*q6m_arr[8]).real
-    w6+= 6.*wignerw6[15]*(q6m_arr[8].conjugate()*q6m_arr[7]*q6m_arr[7]).real
-    
-    q6=0.
-    for i in range(13):
-        q6+=(q6m_arr[i]*q6m_arr[i].conjugate()).real
-    q6=sqrt(q6)
 
-    result[1]=w6/q6**3
+#def calc_ws_from_qlm(qlm_arr,wigner_arr,m_arr):
+#    w=0.+0.*1j
+#    for i in m_arr.shape[0]:
+#        w+=wigner_arr[i]*(qlm_arr[m_arr[i,0]]*qlm_arr[m_arr[i,1]]*qlm_arr[m_arr[i,2]])
+#    norm=np.sqrt(np.sum(np.abs(qlm_arr)**2))**3
+#    w=w/norm
+#    return np.real_if_close(w)
+#
+#
+#def calc_ws_from_qlm_arrays(l_vec,qlm_arrays):
+#    result=np.zeros((qlm_arrays.shape[0],l_vec.shape[0]),dtype=np.float64)
+#    wignerlists=[calc_wigner3j_general(l) for l in l_vec]
+#    for i in range(qlm_arrays.shape[0]):
+#        for j in range(l_vec.shape[0]):
+#            result[i,j]=calc_ws_from_qlm(l_vec[j],qlm_arrays[i],)
+
+@numba.njit(numba.float64[:, :](numba.int32[:], numba.complex128[:, :],numba.float64[:],numba.int32[:,:],numba.int32[:]))
+def calc_wls_from_qlm_arrays(l_vec, qlm_arrays,wigner_arr,m_arr,count_arr):
+    "calculates the final ql (over all m) from qlm data"
+    len_l = l_vec.shape[0]
     
+    result = np.zeros((qlm_arrays.shape[0], len_l), dtype=np.float64)
+
+    for i in range(qlm_arrays.shape[0]):
+        prevcount=0
+        index_l=0
+        for j in range(len_l):
+            l = l_vec[j]
+            w=0.+0*1j
+            for k in range(prevcount,count_arr[j]):
+                w+=wigner_arr[k]*qlm_arrays[i][m_arr[k,0]]*qlm_arrays[i][m_arr[k,1]]*qlm_arrays[i][m_arr[k,2]]
+            
+            qlm_sum=0
+            for m in range(-l, l+1):
+                qlm_sum += abs(qlm_arrays[i, index_l+m+l])**2
+            qlm_sum=qlm_sum**(3/2)
+            w=w/qlm_sum
+            result[i,j]=w.real
+            prevcount=count_arr[j]
+            index_l += 2*l+1
+
     return result
+
+def calc_wigner3j_general(l_vec):
+    wignerlist=[]
+    mlist=[]
+    index_l=0
+    count=0
+    countlist=[]
+    for j in range(l_vec.shape[0]):
+        l = l_vec[j]
+        for m1 in range(-l,l+1):
+            for m2 in range(-l,l+1):
+                for m3 in range(-l,l+1):
+                    if m1+m2+m3 == 0:
+                        m1_new=index_l+m1+l
+                        m2_new=index_l+m2+l
+                        m3_new=index_l+m3+l
+                        wigner=float(N(wigner_3j(l,l,l,m1,m2,m3)))
+                        wignerlist.append(wigner)
+                        mlist.append([m1_new,m2_new,m3_new])
+                        count+=1
+        index_l += 2*l+1
+        countlist.append(count)
+    return np.array(wignerlist,dtype=np.float64),np.array(mlist,dtype=np.int32),np.array(countlist,dtype=np.int32)
