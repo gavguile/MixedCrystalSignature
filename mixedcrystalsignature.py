@@ -187,13 +187,13 @@ class MixedCrystalSignature:
 #        return self.sign_array
 
 if __name__ == '__main__':
-    from datageneration.generatecrystaldata import fill_volume_fcc
+    import datageneration.generatecrystaldata as gc
     import time
     
     t_tot=time.process_time()
     
     size=[20,20,20]
-    datapoints=fill_volume_fcc(size[0], size[1], size[2])
+    datapoints=gc.fill_volume_bcc(size[0], size[1], size[2])
     volume=[[2,size[i]-2] for i in range(3)]
     
     mcs=MixedCrystalSignature(datapoints)
