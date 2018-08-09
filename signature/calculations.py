@@ -112,23 +112,6 @@ def calc_qls_from_qlm_arrays(l_vec, qlm_arrays):
 
     return result
 
-
-#def calc_ws_from_qlm(qlm_arr,wigner_arr,m_arr):
-#    w=0.+0.*1j
-#    for i in m_arr.shape[0]:
-#        w+=wigner_arr[i]*(qlm_arr[m_arr[i,0]]*qlm_arr[m_arr[i,1]]*qlm_arr[m_arr[i,2]])
-#    norm=np.sqrt(np.sum(np.abs(qlm_arr)**2))**3
-#    w=w/norm
-#    return np.real_if_close(w)
-#
-#
-#def calc_ws_from_qlm_arrays(l_vec,qlm_arrays):
-#    result=np.zeros((qlm_arrays.shape[0],l_vec.shape[0]),dtype=np.float64)
-#    wignerlists=[calc_wigner3j_general(l) for l in l_vec]
-#    for i in range(qlm_arrays.shape[0]):
-#        for j in range(l_vec.shape[0]):
-#            result[i,j]=calc_ws_from_qlm(l_vec[j],qlm_arrays[i],)
-
 @numba.njit(numba.float64[:, :](numba.int32[:], numba.complex128[:, :],numba.float64[:],numba.int32[:,:],numba.int32[:]))
 def calc_wls_from_qlm_arrays(l_vec, qlm_arrays,wigner_arr,m_arr,count_arr):
     "calculates the final ql (over all m) from qlm data"
@@ -178,3 +161,70 @@ def calc_wigner3j_general(l_vec):
         index_l += 2*l+1
         countlist.append(count)
     return np.array(wignerlist,dtype=np.float64),np.array(mlist,dtype=np.int32),np.array(countlist,dtype=np.int32)
+
+@numba.njit(numba.float64[:](numba.int32[:],numba.float64[:,:],numba.float64[:]))
+def calc_angles(neighbors,datapoints,centerpoint):
+    n_neighbors=len(neighbors)
+    angles=np.zeros((n_neighbors*(n_neighbors-1)//2),dtype=np.float64)
+    count=0
+    for j in range(n_neighbors):
+        for k in range(j+1,n_neighbors):
+            idx1=neighbors[j]
+            idx2=neighbors[k]
+            numerator=0.
+            sum_u=0.
+            sum_v=0.
+            for l in range(3):
+                u=datapoints[idx1,l]-centerpoint[l]
+                v=datapoints[idx2,l]-centerpoint[l]
+                numerator+=u*v
+                sum_u+=u**2
+                sum_v+=v**2
+            angles[count]=numerator/(sqrt(sum_u*sum_v))
+            count+=1
+    return angles
+
+def calc_bond_angles(indices,neighborlist,datapoints):
+    angle_edges=np.array([-1.0, -0.945, -0.915, -0.755, -0.195, 0.195, 0.245, 0.795, 1.0])
+    bond_angles=np.zeros((datapoints.shape[0],angle_edges.shape[0]-1),dtype=np.int32)
+    
+    for i in indices:
+        angles=calc_angles(np.array(neighborlist[i],dtype=np.int32),datapoints,datapoints[i])
+        bond_angles[i]=fast_hist(angles,angle_edges)
+    return bond_angles
+
+@numba.njit(numba.float64[:](numba.int32[:],numba.float64[:,:]))
+def calc_distances(neighbors,datapoints):
+    n_neighbors=len(neighbors)
+    distances=np.zeros((n_neighbors*(n_neighbors-1)//2),dtype=np.float64)
+    count=0
+    for j in range(n_neighbors):
+        for k in range(j+1,n_neighbors):
+            idx1=neighbors[j]
+            idx2=neighbors[k]
+            normsq=0.
+            for l in range(3):
+                normsq+=(datapoints[idx1,l]-datapoints[idx2,l])**2
+            distances[count]=sqrt(normsq)
+            count+=1
+    return distances
+
+def calc_hist_distances(indices,neighborlist,datapoints,volumes):
+    nbins_distances=12
+    hist_distances=np.zeros((datapoints.shape[0],nbins_distances),dtype=np.int32)
+    
+    for i in indices:
+        d0=volumes[i]**(1/3)
+        distance_edges=fast_edges(d0,nbins_distances)
+        distances=calc_distances(np.array(neighborlist[i],dtype=np.int32),datapoints)/d0
+        hist_distances[i]=fast_hist(distances,distance_edges)
+    return hist_distances
+
+@numba.njit(numba.int32[:](numba.float64[:],numba.float64[:]))
+def fast_hist(data, bin_edges):
+    hist,_=np.histogram(data,bin_edges)
+    return hist.astype(np.int32)
+
+@numba.njit(numba.float64[:](numba.float64,numba.int64))
+def fast_edges(d0,nbins_distances):
+    return np.linspace(0,d0*1.5,nbins_distances+1)
