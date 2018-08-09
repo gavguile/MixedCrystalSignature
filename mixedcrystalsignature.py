@@ -149,9 +149,18 @@ class MixedCrystalSignature:
             
     def calc_msm(self):
         ql_array=calc.calc_qls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.insider_indices]).transpose()
+        self.signature['q2']=ql_array[mcs.L_VEC==2][0]
         self.signature['q4']=ql_array[mcs.L_VEC==4][0]
         self.signature['q6']=ql_array[mcs.L_VEC==6][0]
         
+        wigner_arr,m_arr,count_arr=calc.calc_wigner3j_general(self.L_VEC)
+        wl_array=calc.calc_wls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.insider_indices],wigner_arr,m_arr,count_arr).transpose()
+        self.signature['w2']=wl_array[mcs.L_VEC==2][0]
+        self.signature['w4']=wl_array[mcs.L_VEC==4][0]
+        self.signature['w6']=wl_array[mcs.L_VEC==6][0]
+        
+    
+
 #    def calc_sign_array(self):
 #        datalist=[]
 #        self.solid_indices=self.indices[np.logical_and(self.inner_bool,self.solid_bool)]
@@ -183,7 +192,7 @@ if __name__ == '__main__':
     
     t_tot=time.process_time()
     
-    size=[10,10,10]
+    size=[20,20,20]
     datapoints=fill_volume_fcc(size[0], size[1], size[2])
     volume=[[2,size[i]-2] for i in range(3)]
     
