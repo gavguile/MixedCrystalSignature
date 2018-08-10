@@ -19,7 +19,7 @@ class MixedCrystalSignature:
     #L_VEC=np.array([4,6],dtype=np.int32)
     MAX_L=np.max(L_VEC)
 
-    def __init__(self,data,solid_thresh=0.652,pool=None):
+    def __init__(self,solid_thresh=0.55,pool=None):
         self.solid_thresh=solid_thresh
         self.inner_bool=None
         self.indices=None
@@ -31,8 +31,6 @@ class MixedCrystalSignature:
         self.voro_vols=None
         self.qlm_arrays=None
         self.signature=pd.DataFrame()
-        
-        self.set_datapoints(data)
         
         self.p=None
         if pool is not None:
@@ -144,12 +142,12 @@ class MixedCrystalSignature:
     def calc_msm(self):
         ql_array=calc.calc_qls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.solid_indices]).transpose()
         for l in self.L_VEC:
-            self.signature['q{:d}'.format(l)]=ql_array[mcs.L_VEC==l][0]
+            self.signature['q{:d}'.format(l)]=ql_array[self.L_VEC==l][0]
         
         wigner_arr,m_arr,count_arr=calc.calc_wigner3j_general(self.L_VEC)
         wl_array=calc.calc_wls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.solid_indices],wigner_arr,m_arr,count_arr).transpose()
         for l in self.L_VEC:
-            self.signature['w{:d}'.format(l)]=wl_array[mcs.L_VEC==l][0]
+            self.signature['w{:d}'.format(l)]=wl_array[self.L_VEC==l][0]
     
     def calc_bond_angles(self):
         bond_angles=calc.calc_bond_angles(self.solid_indices,self.neighborlist,self.datapoints)
@@ -172,23 +170,25 @@ class MixedCrystalSignature:
             self.signature['zeta{:d}'.format(dim)]=eigenvals_arr[:,dim]
 
     def calc_signature(self):
-        mcs.calc_qlm_array()
-        mcs.calc_struct_order()
-        mcs.calc_num_neigh()
-        mcs.calc_msm()
-        mcs.calc_bond_angles()
-        mcs.calc_minkowski_eigvals()
-        mcs.calc_hist_distances()
+        self.signature=pd.DataFrame()
+        self.calc_qlm_array()
+        self.calc_struct_order()
+        self.calc_num_neigh()
+        self.calc_msm()
+        self.calc_bond_angles()
+        self.calc_minkowski_eigvals()
+        self.calc_hist_distances()
 
 if __name__ == '__main__':
     import datageneration.generatecrystaldata as gc
     import multiprocessing as mp
     
-    size=[30,30,30]
+    size=[15,15,15]
     datapoints=gc.fill_volume_hcp(size[0], size[1], size[2])
     volume=[[2,size[i]-2] for i in range(3)]
     
-    mcs=MixedCrystalSignature(datapoints,pool=mp.Pool(6))
+    mcs=MixedCrystalSignature(pool=mp.Pool(6))
+    mcs.set_datapoints(datapoints)
     mcs.set_inner_volume(volume)
     mcs.calc_signature()
     mcs.p.close()
