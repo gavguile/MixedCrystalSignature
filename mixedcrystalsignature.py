@@ -12,20 +12,14 @@ from scipy.spatial import Voronoi, ConvexHull
 import signature.calculations as calc
 from functools import partial
 
-try:
-    import multiprocessing as mp
-    MP_EXISTS=False
-except ImportError:
-    MP_EXISTS=False
-
 class MixedCrystalSignature:
     """ This is the docstring """
-    
+
     L_VEC=np.array([2,4,6],dtype=np.int32)
     #L_VEC=np.array([4,6],dtype=np.int32)
     MAX_L=np.max(L_VEC)
 
-    def __init__(self,data,solid_thresh=0.652):
+    def __init__(self,data,solid_thresh=0.652,pool=None):
         self.solid_thresh=solid_thresh
         self.inner_bool=None
         self.indices=None
@@ -39,21 +33,17 @@ class MixedCrystalSignature:
         self.signature=pd.DataFrame()
         
         self.set_datapoints(data)
-
-        if MP_EXISTS:
-            self.p = mp.Pool()
+        
+        self.p=None
+        if pool is not None:
+            self.p = pool
         
         self.len_qlm=0
         self.idx_qlm=[]
         for i,l in enumerate(self.L_VEC):
             self.idx_qlm.append(np.arange(self.len_qlm,self.len_qlm+2*l+1,dtype=np.int32))
-            self.len_qlm += (2*self.L_VEC[i]+1)
+            self.len_qlm += (2*self.L_VEC[i]+1)        
     
-    def __del__(self):
-        if MP_EXISTS:
-            self.p.close()
-            self.p.join()
-            
     def set_datapoints(self,data):
         self.datapoints=data
         self.inner_bool=np.ones(self.datapoints.shape[0],dtype=np.bool)
@@ -99,7 +89,7 @@ class MixedCrystalSignature:
         vertices=self.voro.vertices
         voro_points_list=[vertices[regions[point_region[i]]] for i in self.indices]
         
-        if MP_EXISTS:
+        if self.p is not None:
             self.conv_hulls= self.p.map(partial(ConvexHull,qhull_options="QJ"),voro_points_list,chunksize=400)
         else:
             self.conv_hulls=[ConvexHull(voro_points_list[i],qhull_options="QJ") for i in self.indices]
@@ -192,11 +182,14 @@ class MixedCrystalSignature:
 
 if __name__ == '__main__':
     import datageneration.generatecrystaldata as gc
+    import multiprocessing as mp
     
     size=[30,30,30]
     datapoints=gc.fill_volume_hcp(size[0], size[1], size[2])
     volume=[[2,size[i]-2] for i in range(3)]
     
-    mcs=MixedCrystalSignature(datapoints)
+    mcs=MixedCrystalSignature(datapoints,pool=mp.Pool(6))
     mcs.set_inner_volume(volume)
     mcs.calc_signature()
+    mcs.p.close()
+    mcs.p.join()
