@@ -117,24 +117,24 @@ class MixedCrystalSignature:
         self.calc_voro()
         self.calc_neighborlist()
         self.calc_convex_hulls()
-        voro_area_angles=self.calc_voro_area_angles()
+        self.voro_area_angles=self.calc_voro_area_angles()
         
-        total_areas=[hull.area for hull in self.conv_hulls]
+        self.total_areas=[hull.area for hull in self.conv_hulls]
         self.voro_vols=[hull.volume for hull in self.conv_hulls]
         
         len_array=0 
         for i in range(self.L_VEC.shape[0]): 
             len_array += (2*self.L_VEC[i]+1) 
             
-        self.qlm_arrays=np.zeros((len(total_areas),len_array),dtype=np.complex128) 
+        self.qlm_arrays=np.zeros((len(self.total_areas),len_array),dtype=np.complex128) 
         
-        for i in range(len(total_areas)):
+        for i in range(len(self.total_areas)):
             self.qlm_arrays[i,:]=calc.calc_msm_qlm(len_array,
                                                    self.L_VEC,
-                                                   voro_area_angles[i][:,2],
-                                                   voro_area_angles[i][:,1],
-                                                   total_areas[i],
-                                                   voro_area_angles[i][:,0])
+                                                   self.voro_area_angles[i][:,2],
+                                                   self.voro_area_angles[i][:,1],
+                                                   self.total_areas[i],
+                                                   self.voro_area_angles[i][:,0])
     
     def calc_struct_order(self):
         self.solid_bool=np.zeros(self.datapoints.shape[0],dtype=np.bool)
@@ -146,18 +146,19 @@ class MixedCrystalSignature:
             si=calc.calc_si(6,self.qlm_arrays[i,self.idx_qlm[2]],num_neighbors,qlm_array_neighbors)
             self.solid_bool[i]=(si>=self.solid_thresh)
             self.struct_order[i]=si
-            
+    
+    def calc_num_neigh(self):
+        self.signature['N']=[len(self.neighborlist[i]) for i in self.insider_indices]
+    
     def calc_msm(self):
         ql_array=calc.calc_qls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.insider_indices]).transpose()
-        self.signature['q2']=ql_array[mcs.L_VEC==2][0]
-        self.signature['q4']=ql_array[mcs.L_VEC==4][0]
-        self.signature['q6']=ql_array[mcs.L_VEC==6][0]
+        for l in self.L_VEC:
+            self.signature['q{:d}'.format(l)]=ql_array[mcs.L_VEC==l][0]
         
         wigner_arr,m_arr,count_arr=calc.calc_wigner3j_general(self.L_VEC)
         wl_array=calc.calc_wls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.insider_indices],wigner_arr,m_arr,count_arr).transpose()
-        self.signature['w2']=wl_array[mcs.L_VEC==2][0]
-        self.signature['w4']=wl_array[mcs.L_VEC==4][0]
-        self.signature['w6']=wl_array[mcs.L_VEC==6][0]
+        for l in self.L_VEC:
+            self.signature['w{:d}'.format(l)]=wl_array[mcs.L_VEC==l][0]
     
     def calc_bond_angles(self):
         bond_angles=calc.calc_bond_angles(self.insider_indices,self.neighborlist,self.datapoints)[self.insider_indices]
@@ -168,6 +169,16 @@ class MixedCrystalSignature:
         hist_distances=calc.calc_hist_distances(self.insider_indices,self.neighborlist,self.datapoints,self.voro_vols)[self.insider_indices]
         for dim in range(hist_distances.shape[1]):
             self.signature['dist{:d}'.format(dim)]=hist_distances[:,dim]
+
+    def calc_minkowski_eigvals(self):
+        eigenvals_arr=np.zeros((self.insider_indices.shape[0],6),dtype=np.float64)
+        for idx in range(self.insider_indices.shape[0]):
+            i=self.insider_indices[idx]
+            eigenvals_arr[idx]=calc.calc_minkowski_eigenvalues(self.total_areas[i],
+                                                              self.voro_area_angles[i][:,0],
+                                                              self.conv_hulls[i].equations[:,0:3])
+        for dim in range(eigenvals_arr.shape[1]):
+            self.signature['zeta{:d}'.format(dim)]=eigenvals_arr[:,dim]
 
 #    def calc_sign_array(self):
 #        datalist=[]
@@ -200,7 +211,7 @@ if __name__ == '__main__':
     
     t_tot=time.process_time()
     
-    size=[15,15,15]
+    size=[30,30,30]
     datapoints=gc.fill_volume_hcp(size[0], size[1], size[2])
     volume=[[2,size[i]-2] for i in range(3)]
     
@@ -216,15 +227,23 @@ if __name__ == '__main__':
     print('calc_struct_order',time.process_time()-t)
     
     t=time.process_time()
+    mcs.calc_num_neigh()
+    print('calc_num_neigh',time.process_time()-t)
+    
+    t=time.process_time()
     mcs.calc_msm()
     print('calc_msm',time.process_time()-t)
     
     t=time.process_time()
-    angles=mcs.calc_bond_angles()
+    mcs.calc_bond_angles()
     print('calc_bond_angles',time.process_time()-t)
     
     t=time.process_time()
-    dists=mcs.calc_hist_distances()
+    mcs.calc_hist_distances()
     print('calc_hist_distances',time.process_time()-t)
+    
+    t=time.process_time()
+    mcs.calc_minkowski_eigvals()
+    print('calc_minkowski_eigvals',time.process_time()-t)
     
     print('total time:',time.process_time()-t_tot)
