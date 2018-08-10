@@ -186,11 +186,12 @@ def calc_angles(neighbors,datapoints,centerpoint):
 
 def calc_bond_angles(indices,neighborlist,datapoints):
     angle_edges=np.array([-1.0, -0.945, -0.915, -0.755, -0.195, 0.195, 0.245, 0.795, 1.0])
-    bond_angles=np.zeros((datapoints.shape[0],angle_edges.shape[0]-1),dtype=np.int32)
+    bond_angles=np.zeros((indices.shape[0],angle_edges.shape[0]-1),dtype=np.int32)
     
-    for i in indices:
+    for idx in range(indices.shape[0]):
+        i=indices[idx]
         angles=calc_angles(np.array(neighborlist[i],dtype=np.int32),datapoints,datapoints[i])
-        bond_angles[i]=fast_hist(angles,angle_edges)
+        bond_angles[idx]=fast_hist(angles,angle_edges)
     return bond_angles
 
 @numba.njit(numba.float64[:](numba.int32[:],numba.float64[:,:]))
@@ -211,13 +212,14 @@ def calc_distances(neighbors,datapoints):
 
 def calc_hist_distances(indices,neighborlist,datapoints,volumes):
     nbins_distances=12
-    hist_distances=np.zeros((datapoints.shape[0],nbins_distances),dtype=np.int32)
+    hist_distances=np.zeros((indices.shape[0],nbins_distances),dtype=np.int32)
     
-    for i in indices:
+    for idx in range(indices.shape[0]):
+        i=indices[idx]
         d0=volumes[i]**(1/3)
         distance_edges=fast_edges(d0,nbins_distances)
         distances=calc_distances(np.array(neighborlist[i],dtype=np.int32),datapoints)/d0
-        hist_distances[i]=fast_hist(distances,distance_edges)
+        hist_distances[idx]=fast_hist(distances,distance_edges)
     return hist_distances
 
 @numba.njit(numba.int32[:](numba.float64[:],numba.float64[:]))

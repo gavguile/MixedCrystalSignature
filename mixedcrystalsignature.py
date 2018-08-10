@@ -21,8 +21,8 @@ except ImportError:
 class MixedCrystalSignature:
     """ This is the docstring """
     
-    NBINS_DISTANCES=12
     L_VEC=np.array([2,4,6],dtype=np.int32)
+    #L_VEC=np.array([4,6],dtype=np.int32)
     MAX_L=np.max(L_VEC)
 
     def __init__(self,data,solid_thresh=0.652):
@@ -146,70 +146,52 @@ class MixedCrystalSignature:
             si=calc.calc_si(6,self.qlm_arrays[i,self.idx_qlm[2]],num_neighbors,qlm_array_neighbors)
             self.solid_bool[i]=(si>=self.solid_thresh)
             self.struct_order[i]=si
+        self.solid_indices=self.indices[np.logical_and(self.inner_bool,self.solid_bool)]
     
     def calc_num_neigh(self):
-        self.signature['N']=[len(self.neighborlist[i]) for i in self.insider_indices]
+        self.signature['N']=[len(self.neighborlist[i]) for i in self.solid_indices]
     
     def calc_msm(self):
-        ql_array=calc.calc_qls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.insider_indices]).transpose()
+        ql_array=calc.calc_qls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.solid_indices]).transpose()
         for l in self.L_VEC:
             self.signature['q{:d}'.format(l)]=ql_array[mcs.L_VEC==l][0]
         
         wigner_arr,m_arr,count_arr=calc.calc_wigner3j_general(self.L_VEC)
-        wl_array=calc.calc_wls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.insider_indices],wigner_arr,m_arr,count_arr).transpose()
+        wl_array=calc.calc_wls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.solid_indices],wigner_arr,m_arr,count_arr).transpose()
         for l in self.L_VEC:
             self.signature['w{:d}'.format(l)]=wl_array[mcs.L_VEC==l][0]
     
     def calc_bond_angles(self):
-        bond_angles=calc.calc_bond_angles(self.insider_indices,self.neighborlist,self.datapoints)[self.insider_indices]
+        bond_angles=calc.calc_bond_angles(self.solid_indices,self.neighborlist,self.datapoints)
         for dim in range(bond_angles.shape[1]):
             self.signature['ba{:d}'.format(dim)]=bond_angles[:,dim]
         
     def calc_hist_distances(self):
-        hist_distances=calc.calc_hist_distances(self.insider_indices,self.neighborlist,self.datapoints,self.voro_vols)[self.insider_indices]
+        hist_distances=calc.calc_hist_distances(self.solid_indices,self.neighborlist,self.datapoints,self.voro_vols)
         for dim in range(hist_distances.shape[1]):
             self.signature['dist{:d}'.format(dim)]=hist_distances[:,dim]
 
     def calc_minkowski_eigvals(self):
-        eigenvals_arr=np.zeros((self.insider_indices.shape[0],6),dtype=np.float64)
-        for idx in range(self.insider_indices.shape[0]):
-            i=self.insider_indices[idx]
+        eigenvals_arr=np.zeros((self.solid_indices.shape[0],6),dtype=np.float64)
+        for idx in range(self.solid_indices.shape[0]):
+            i=self.solid_indices[idx]
             eigenvals_arr[idx]=calc.calc_minkowski_eigenvalues(self.total_areas[i],
-                                                              self.voro_area_angles[i][:,0],
-                                                              self.conv_hulls[i].equations[:,0:3])
+                                                               self.voro_area_angles[i][:,0],
+                                                               self.conv_hulls[i].equations[:,0:3])
         for dim in range(eigenvals_arr.shape[1]):
             self.signature['zeta{:d}'.format(dim)]=eigenvals_arr[:,dim]
 
-#    def calc_sign_array(self):
-#        datalist=[]
-#        self.solid_indices=self.indices[np.logical_and(self.inner_bool,self.solid_bool)]
-#        for i in self.solid_indices:
-#            voro_neighbors = np.array(self.neighborlist[i],dtype=np.int64)
-#            if len(voro_neighbors >= 6):
-#                qlm_array=self.qlm_arrays[i]
-#                datapoint=self.datapoints[i]
-#                neighborpoints=self.datapoints[voro_neighbors]
-#                datalist.append([voro_neighbors,qlm_array,datapoint,neighborpoints,
-#                                 self.conv_hulls[i].area,self.voro_area_angles[i][:,0],
-#                                 self.conv_hulls[i].equations[:,0:3]])
-#            else:
-#                print('Warning: low number of neighbors')
-#    
-#        calc_particle_signature_part=partial(calc_particle_signature,sign_dimension=self.sign_dimension,
-#                                             idx_qlm=self.idx_qlm, si_threshold=self.si_threshold,
-#                                             nbins_distances=self.nbins_distances, l_vec=self.l_vec,
-#                                             wignerw4=self.wignerw4, wignerw6=self.wignerw6)
-#        if self.n_proc > 1:
-#            self.sign_array=np.array(self.p.map(calc_particle_signature_part,datalist))
-#        else:
-#            self.sign_array=np.array(list(map(calc_particle_signature_part,datalist)))
-#        return self.sign_array
+    def calc_signature(self):
+        mcs.calc_qlm_array()
+        mcs.calc_struct_order()
+        mcs.calc_num_neigh()
+        mcs.calc_msm()
+        mcs.calc_bond_angles()
+        mcs.calc_minkowski_eigvals()
+        mcs.calc_hist_distances()
 
 if __name__ == '__main__':
     import datageneration.generatecrystaldata as gc
-    import time
-    
-    t_tot=time.process_time()
     
     size=[30,30,30]
     datapoints=gc.fill_volume_hcp(size[0], size[1], size[2])
@@ -217,33 +199,4 @@ if __name__ == '__main__':
     
     mcs=MixedCrystalSignature(datapoints)
     mcs.set_inner_volume(volume)
-    
-    t=time.process_time()
-    mcs.calc_qlm_array()
-    print('calc_qlm_array',time.process_time()-t)
-    
-    t=time.process_time()
-    mcs.calc_struct_order()
-    print('calc_struct_order',time.process_time()-t)
-    
-    t=time.process_time()
-    mcs.calc_num_neigh()
-    print('calc_num_neigh',time.process_time()-t)
-    
-    t=time.process_time()
-    mcs.calc_msm()
-    print('calc_msm',time.process_time()-t)
-    
-    t=time.process_time()
-    mcs.calc_bond_angles()
-    print('calc_bond_angles',time.process_time()-t)
-    
-    t=time.process_time()
-    mcs.calc_hist_distances()
-    print('calc_hist_distances',time.process_time()-t)
-    
-    t=time.process_time()
-    mcs.calc_minkowski_eigvals()
-    print('calc_minkowski_eigvals',time.process_time()-t)
-    
-    print('total time:',time.process_time()-t_tot)
+    mcs.calc_signature()
