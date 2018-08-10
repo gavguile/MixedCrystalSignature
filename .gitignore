@@ -9,3 +9,7 @@ yappitest.py
 *.so
 
 \.spyproject/
+
+tmp_test\.pkl
+
+tmp_train\.pkl
