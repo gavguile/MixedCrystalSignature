@@ -13,14 +13,11 @@ Created on Wed Jun 14 08:51:08 2017
 #3. Auswertung und plots
 
 import numpy as np
-import matplotlib.pyplot as plt
 import time
 
-import GenerateCrystalNeighborhood as gcn
-import DisorderCrystalStructure as dcs
-import MixedCrystalSignature as MCS
-from LoadMDSim import get_md_data_dict
-import MCSPlots as MCSPL
+import datageneration.generatecrystaldata as gcn
+import datageneration.disordercrystaldata as dcs
+from mixedcrystalsignature import MixedCrystalSignature
 
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
@@ -36,10 +33,11 @@ class CrystalAnalyzer:
     structure_arr=['fcc','hcp','bcc']
     labels2struct={'fcc':1,'hcp':2,'bcc':3}
     volume = [[0,0,0],[34,34,34]]
+    #volume = [[0,0,0],[15,15,15]]
     inner_distance = 2
     
-    traindatafilepath="signatures/tmp_train.pkl"
-    testdatafilepath="signatures/tmp_test.pkl"
+    traindatafilepath="tmp_train.pkl"
+    testdatafilepath="tmp_test.pkl"
     classifierfilepath="tmp_classifier.pkl"
     scalerfilepath="tmp_scaler.pkl"
     
@@ -77,17 +75,15 @@ class CrystalAnalyzer:
             for i,datapoints in enumerate(datasets[structure]['datalist']):
                 self.sign_calculator.set_datapoints(datapoints)
                 self.sign_calculator.set_inner_bool_vec(inner_bool_vec)
-                self.sign_calculator.calc_qlm_array()
-                self.sign_calculator.calc_si_bool()
-                self.sign_calculator.calc_sign_array()
-                signatures[structure]['sign_arr'].append(self.sign_calculator.sign_array)
+                self.sign_calculator.calc_signature()
+                signatures[structure]['sign_arr'].append(self.sign_calculator.signature)
                 signatures[structure]['voro_vols'].append(self.sign_calculator.voro_vols)
-                signatures[structure]['softness'].append(self.sign_calculator.softness)
+                signatures[structure]['softness'].append(self.sign_calculator.struct_order)
                 signatures[structure]['data_idx'].append(self.sign_calculator.solid_indices)
                 if self.loglevel >= 3:
                     print('struc:',structure,
                           'noise:',datasets[structure]['noise'][i],
-                          'num:', len(self.sign_calculator.sign_array))
+                          'num:', len(self.sign_calculator.signature))
         return signatures
     
     def calculate_signatures(self, datasets, inner_distance):
@@ -155,6 +151,8 @@ class CrystalAnalyzer:
         return np.concatenate(signlist,axis=0), index_list
     
     def generate_train_signatures(self):
+        if self.loglevel >= 3:
+            print('generating training signatures')
         self.train_datasets=self.create_artificial_datasets(self.noiselist,
                                                             self.structure_arr,
                                                             self.volume[1],
@@ -162,6 +160,8 @@ class CrystalAnalyzer:
         self.train_signatures=self.calculate_artificial_signatures(self.train_datasets)
         
     def generate_test_signatures(self):
+        if self.loglevel >= 3:
+            print('generating test signatures')
         self.test_datasets=self.create_artificial_datasets(self.noiselist,
                                                             self.structure_arr,
                                                             self.volume[1],
@@ -222,8 +222,6 @@ class CrystalAnalyzer:
                   accuracy_score(trainprediction,self.trainlabels))
         
     def predict_test(self):
-        #self.testmatrix, self.testlabels, self.testindex_dict=self.convert_artificial_signatures_to_matrix(self.test_signatures)
-        
         for structure in self.test_signatures:
             self.test_signatures[structure]['prediction']=[]
             for i,sign_arr in enumerate(self.test_signatures[structure]['sign_arr']):
@@ -236,16 +234,6 @@ class CrystalAnalyzer:
                     orig_labels=np.zeros(len(pred),dtype=np.int32)+self.labels2struct[structure]
                     print('predicted','struc',structure,'idx', i,
                           accuracy_score(pred,orig_labels))
-        
-            
-#    def insert_prediction_to_datadict(self,prediction,indexlist,datasets):
-#        length=len(datasets['datalist'])
-#        datasets['prediction']=[[] for i in range(0,length)]
-#        datasets['data_idx']=[[] for i in range(0,length)]
-#        for i,datarange,data_idx in indexlist:
-#            datasets['prediction'][i]=prediction[datarange]
-#            datasets['data_idx'][i]=data_idx
-#        return datasets
     
     def predict(self,signatures):
         signatures['prediction']=[]
@@ -304,22 +292,69 @@ class CrystalAnalyzer:
         bool_matrix=np.logical_and(bool_matrix_min,bool_matrix_max)
         
         return np.all(bool_matrix,axis=1)
+
+def get_counts(signatures,labels2struct):
+    countdict=dict()
+    for structure,key in labels2struct.items():
+        countdict[structure]=[]
+        for i,prediction in enumerate(signatures['prediction']):
+            countdict[structure].append(np.sum(np.equal(prediction,key)))
+    return countdict
+
+import matplotlib.pyplot as plt
+def plot_test_data(signatures,noiselist,labels2struct):
+    style={'fcc':['v','-'],
+           'hcp':['o','--'],
+           'bcc':['d',':'],
+           'false':['s','-.']}
     
+    fig,ax= plt.subplots(1, 1)
+    length=len(signatures[list(signatures.keys())[0]]['sign_arr'])
+    falsecounts=np.zeros(length,dtype=np.int32)
+    summedcounts=np.zeros(length,dtype=np.int32)
     
+    struct_list=sorted(signatures.keys())
+    for structure in struct_list:
+        countdict=get_counts(signatures[structure],labels2struct)
+        struc_lengths=[len(signatures[structure]['data_idx'][i]) for i in range(length)]
+        first_count_value=struc_lengths[0]
+        tmpfalse=np.zeros(length,dtype=np.int32)
+        for countstruct in countdict:
+            if countstruct!=structure:
+                tmpfalse=np.add(tmpfalse,countdict[countstruct])
+        falsecounts=np.add(falsecounts,tmpfalse)
+        
+        summedcounts=np.add(summedcounts,struc_lengths)
+        percentages=np.divide(countdict[structure],first_count_value)*100
+        plt.plot(noiselist,percentages,label=structure,marker=style[structure][0],linestyle=style[structure][1])
+    
+    falsecounts[summedcounts==0]=0
+    summedcounts[summedcounts==0]=1
+    falsepercentages=np.divide(falsecounts,summedcounts)*100
+    plt.plot(noiselist,falsepercentages,label='false',marker=style['false'][0],linestyle=style['false'][1])
+    
+    print('falsepos:',falsepercentages[10])
+    
+    plt.xlabel('noise [%]')
+    plt.ylabel('structural fraction [%]')
+    plt.xticks(noiselist[::2])
+    plt.legend()
+    return fig,ax
+
 if __name__ == '__main__':
     import matplotlib
     matplotlib.rcParams.update({'figure.autolayout': True})
     
-    filepath='pc_17112016_9h31m_10Pa.dump'
-    logfilepath='pc_17112016_9h31m_10Pa.log'
-    timesteps=list(range(200000,10000000,250000))
-    inner_distance=53.7071
-    mddata=get_md_data_dict(filepath, logfilepath, timesteps)
+#    filepath='pc_17112016_9h31m_10Pa.dump'
+#    logfilepath='pc_17112016_9h31m_10Pa.log'
+#    timesteps=list(range(200000,10000000,250000))
+#    inner_distance=53.7071
+#    mddata=get_md_data_dict(filepath, logfilepath, timesteps)
     
-    sign_calculator=MCS.MCS(si_threshold=0.55,n_proc=6)
+    import multiprocessing as mp
     
-#    classifier = SVC(kernel='rbf')
-#    classifier = RandomForestClassifier(n_estimators=100,max_features='auto',min_samples_leaf=1,n_jobs=6,random_state=0)
+    sign_calculator=MixedCrystalSignature(solid_thresh=0.55,pool=mp.Pool(6))
+    
     classifier = MLPClassifier(max_iter=300,tol=1e-5,
                                hidden_layer_sizes=(250,),
                                solver='adam',random_state=0, shuffle=True,
@@ -327,19 +362,39 @@ if __name__ == '__main__':
     scaler=StandardScaler()
     
     ca=CrystalAnalyzer(classifier,scaler,sign_calculator)
-#    ca.generate_train_signatures()
-#    ca.save_training_signatures()
-#    ca.generate_test_signatures()
-#    ca.save_test_signatures()
-# 
+    ca.generate_train_signatures()
+    ca.save_training_signatures()
+    ca.generate_test_signatures()
+    ca.save_test_signatures()
+    
+    sign_calculator.p.close()
+    sign_calculator.p.join()
+    
     ca.load_training_signatures()
-#    ca.train_classifier()
-#    ca.save_classifier()
-#    ca.save_scaler()
-
+    ca.train_classifier()
+    ca.save_classifier()
+    ca.save_scaler()
+    
     ca.load_scaler()
     ca.load_classifier()
     ca.load_test_signatures()
+    ca.predict_test()
+    
+    fig2,ax2=plot_test_data(ca.test_signatures,ca.noiselist,ca.labels2struct)
+    
+    
+#    ca.save_training_signatures()
+    
+#    ca.save_test_signatures()
+#
+#    ca.load_training_signatures()
+    
+#    ca.save_classifier()
+#    ca.save_scaler()
+#
+#    ca.load_scaler()
+#    ca.load_classifier()
+#    ca.load_test_signatures()
 #    ca.predict_test()
 #    ca.save_test_signatures()
     
@@ -347,30 +402,30 @@ if __name__ == '__main__':
 #    mdsigns=ca.calculate_signatures(mddata,inner_distance)
 #    ca.save_object(mdsigns,'tmp_md.pkl')
     
-    mdsigns=ca.load_object('tmp_md.pkl')
+#    mdsigns=ca.load_object('tmp_md.pkl')
 #    ca.predict(mdsigns)
 #    ca.save_object(mdsigns,'tmp_md.pkl')
 
-    volume=ca.get_volume_from_datapoints(mddata['datalist'][-1])
-    inner=ca.get_inner_volume_bool_vec(mddata['datalist'][-1],volume,inner_distance)
- 
-    fig, ax = MCSPL.plot_md_data(mdsigns,mddata['templist'],ca.labels2struct,np.sum(inner))
-    MCSPL.set_font_sizes(ax,18)
-    ca.save_object(fig,'figures/md_fig_si055_4.pkl')
-    
-    fig2,ax2=MCSPL.plot_test_data(ca.test_signatures,ca.noiselist,ca.labels2struct)
-    MCSPL.set_font_sizes(ax2,18)
-    ca.save_object(fig2,'figures/test_fig_si055_4.pkl')
-    
-    fig3,ax3=MCSPL.plot_train_data(ca.train_signatures,ca.noiselist)
-    MCSPL.set_font_sizes(ax3,18)
-    ca.save_object(fig3,'figures/train_fig_si055_4.pkl')
-    
-    fig4,ax4=MCSPL.plot_false_data(ca.test_signatures,ca.noiselist,ca.labels2struct)
-    MCSPL.set_font_sizes(ax4,18)
-    
-    fig5,ax5=MCSPL.plot_md_sim_class_from_matlab('/media/dietz/Matlab/MDSimAnalysis/mdsim_matlab_to_python.mat')
-    MCSPL.set_font_sizes(ax5,18)
-    
-    plt.show()
-    sign_calculator.close_proc()
+#    volume=ca.get_volume_from_datapoints(mddata['datalist'][-1])
+#    inner=ca.get_inner_volume_bool_vec(mddata['datalist'][-1],volume,inner_distance)
+# 
+#    fig, ax = MCSPL.plot_md_data(mdsigns,mddata['templist'],ca.labels2struct,np.sum(inner))
+#    MCSPL.set_font_sizes(ax,18)
+#    ca.save_object(fig,'figures/md_fig_si055_4.pkl')
+#    
+#    fig2,ax2=MCSPL.plot_test_data(ca.test_signatures,ca.noiselist,ca.labels2struct)
+#    MCSPL.set_font_sizes(ax2,18)
+#    ca.save_object(fig2,'figures/test_fig_si055_4.pkl')
+#    
+#    fig3,ax3=MCSPL.plot_train_data(ca.train_signatures,ca.noiselist)
+#    MCSPL.set_font_sizes(ax3,18)
+#    ca.save_object(fig3,'figures/train_fig_si055_4.pkl')
+#    
+#    fig4,ax4=MCSPL.plot_false_data(ca.test_signatures,ca.noiselist,ca.labels2struct)
+#    MCSPL.set_font_sizes(ax4,18)
+#    
+#    fig5,ax5=MCSPL.plot_md_sim_class_from_matlab('/media/dietz/Matlab/MDSimAnalysis/mdsim_matlab_to_python.mat')
+#    MCSPL.set_font_sizes(ax5,18)
+#    
+#    plt.show()
+#    sign_calculator.close_proc()
