@@ -217,7 +217,7 @@ def calc_hist_distances(indices,neighborlist,datapoints,volumes):
     for idx in range(indices.shape[0]):
         i=indices[idx]
         d0=volumes[i]**(1/3)
-        distance_edges=fast_edges(d0,nbins_distances)
+        distance_edges=fast_edges(d0*0.75,d0*3,nbins_distances+1)
         distances=calc_distances(np.array(neighborlist[i],dtype=np.int32),datapoints)/d0
         hist_distances[idx]=fast_hist(distances,distance_edges)
     return hist_distances
@@ -227,9 +227,9 @@ def fast_hist(data, bin_edges):
     hist,_=np.histogram(data,bin_edges)
     return hist.astype(np.int32)
 
-@numba.njit(numba.float64[:](numba.float64,numba.int64))
-def fast_edges(d0,nbins_distances):
-    return np.linspace(0.5*d0,d0*1.5,nbins_distances+1)
+@numba.njit(numba.float64[:](numba.float64,numba.float64,numba.int64))
+def fast_edges(minval,maxval,num_edges):
+    return np.linspace(minval,maxval,num_edges)
 
 @numba.njit(numba.float64[:](numba.float64,numba.float64[:],numba.float64[:,:]))
 def calc_minkowski_eigenvalues(total_area,voro_areas,normvecs):
