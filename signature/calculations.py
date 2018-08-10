@@ -228,3 +228,42 @@ def fast_hist(data, bin_edges):
 @numba.njit(numba.float64[:](numba.float64,numba.int64))
 def fast_edges(d0,nbins_distances):
     return np.linspace(0.5*d0,d0*1.5,nbins_distances+1)
+
+@numba.njit(numba.float64[:](numba.float64,numba.float64[:],numba.float64[:,:]))
+def calc_minkowski_eigenvalues(total_area,voro_areas,normvecs):
+    tensor=np.zeros((6,6),dtype=np.float64)
+    sqrt2=1.4142135623730951
+    for i in range(voro_areas.shape[0]):
+        a=voro_areas[i]
+        n=normvecs[i]
+        tensor[0,0]+=a*n[0]*n[0]*n[0]*n[0]
+        tensor[1,0]+=a*n[0]*n[0]*n[1]*n[1]
+        tensor[2,0]+=a*n[0]*n[0]*n[2]*n[2]
+        tensor[3,0]+=sqrt2*a*n[0]*n[0]*n[1]*n[2]
+        tensor[4,0]+=sqrt2*a*n[0]*n[0]*n[2]*n[0]
+        tensor[5,0]+=sqrt2*a*n[0]*n[0]*n[0]*n[1]
+        
+        tensor[1,1]+=a*n[1]*n[1]*n[1]*n[1]
+        tensor[2,1]+=a*n[1]*n[1]*n[2]*n[2]
+        tensor[3,1]+=sqrt2*a*n[1]*n[1]*n[1]*n[2]
+        tensor[4,1]+=sqrt2*a*n[1]*n[1]*n[2]*n[0]
+        tensor[5,1]+=sqrt2*a*n[1]*n[1]*n[0]*n[1]
+        
+        tensor[2,2]+=a*n[2]*n[2]*n[2]*n[2]
+        tensor[3,2]+=sqrt2*a*n[2]*n[2]*n[1]*n[2]
+        tensor[4,2]+=sqrt2*a*n[2]*n[2]*n[2]*n[0]
+        tensor[5,2]+=sqrt2*a*n[2]*n[2]*n[0]*n[1]
+        
+        tensor[3,3]+=2*a*n[1]*n[2]*n[1]*n[2]
+        tensor[4,3]+=2*a*n[1]*n[2]*n[2]*n[0]
+        tensor[5,3]+=2*a*n[1]*n[2]*n[0]*n[1]
+        
+        tensor[4,4]+=2*a*n[2]*n[0]*n[2]*n[0]
+        tensor[5,4]+=2*a*n[2]*n[0]*n[0]*n[1]
+        
+        tensor[5,5]+=2*a*n[0]*n[1]*n[0]*n[1]
+
+    tensor/=total_area
+    eigenvalues=np.linalg.eigvalsh(tensor)
+    
+    return eigenvalues
