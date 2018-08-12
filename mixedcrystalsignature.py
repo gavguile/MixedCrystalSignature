@@ -15,7 +15,7 @@ from functools import partial
 class MixedCrystalSignature:
     """ This is the docstring """
 
-    L_VEC=np.array([2,4,6],dtype=np.int32)
+    L_VEC=np.array([4,6],dtype=np.int32)
     #L_VEC=np.array([4,6],dtype=np.int32)
     MAX_L=np.max(L_VEC)
 
@@ -37,10 +37,10 @@ class MixedCrystalSignature:
             self.p = pool
         
         self.len_qlm=0
-        self.idx_qlm=[]
+        self.idx_qlm=dict()
         for i,l in enumerate(self.L_VEC):
-            self.idx_qlm.append(np.arange(self.len_qlm,self.len_qlm+2*l+1,dtype=np.int32))
-            self.len_qlm += (2*self.L_VEC[i]+1)        
+            self.idx_qlm[l]=np.arange(self.len_qlm,self.len_qlm+2*l+1,dtype=np.int32)
+            self.len_qlm += (2*self.L_VEC[i]+1)   
     
     def set_datapoints(self,data):
         self.datapoints=data
@@ -125,13 +125,14 @@ class MixedCrystalSignature:
                                                    self.voro_area_angles[i][:,0])
     
     def calc_struct_order(self):
+        si_l=6 #this should only make sense with l=6, so its hardcoded
         self.solid_bool=np.zeros(self.datapoints.shape[0],dtype=np.bool)
         self.struct_order=np.zeros(self.datapoints.shape[0],dtype=np.float64)
         for i in self.insider_indices:
             voro_neighbors = np.array(self.neighborlist[i],dtype=np.int64)
-            qlm_array_neighbors = self.qlm_arrays[voro_neighbors][:,self.idx_qlm[2]]
+            qlm_array_neighbors = self.qlm_arrays[voro_neighbors][:,self.idx_qlm[si_l]]
             num_neighbors=len(self.neighborlist[i])
-            si=calc.calc_si(6,self.qlm_arrays[i,self.idx_qlm[2]],num_neighbors,qlm_array_neighbors)
+            si=calc.calc_si(6,self.qlm_arrays[i,self.idx_qlm[si_l]],num_neighbors,qlm_array_neighbors)
             self.solid_bool[i]=(si>=self.solid_thresh)
             self.struct_order[i]=si
         self.solid_indices=self.indices[np.logical_and(self.inner_bool,self.solid_bool)]
@@ -184,7 +185,7 @@ if __name__ == '__main__':
     import multiprocessing as mp
     
     size=[15,15,15]
-    datapoints=gc.fill_volume_hcp(size[0], size[1], size[2])
+    datapoints=gc.fill_volume_bcc(size[0], size[1], size[2])
     volume=[[2,size[i]-2] for i in range(3)]
     
     mcs=MixedCrystalSignature(pool=mp.Pool(6))
@@ -193,3 +194,4 @@ if __name__ == '__main__':
     mcs.calc_signature()
     mcs.p.close()
     mcs.p.join()
+    sign=mcs.signature
