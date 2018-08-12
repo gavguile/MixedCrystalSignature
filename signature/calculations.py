@@ -185,7 +185,7 @@ def calc_angles(neighbors,datapoints,centerpoint):
     return angles
 
 def calc_bond_angles(indices,neighborlist,datapoints):
-    angle_edges=np.array([-1.0, -0.945, -0.915, -0.755, -0.195, 0.195, 0.245, 0.795, 1.0])
+    angle_edges=np.array([-1.05, -0.945, -0.915, -0.755, -0.195, 0.195, 0.245, 0.795, 1.05])
     bond_angles=np.zeros((indices.shape[0],angle_edges.shape[0]-1),dtype=np.int32)
     
     for idx in range(indices.shape[0]):
