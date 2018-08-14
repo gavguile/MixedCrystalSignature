@@ -217,7 +217,7 @@ def calc_hist_distances(indices,neighborlist,datapoints,volumes):
     for idx in range(indices.shape[0]):
         i=indices[idx]
         d0=volumes[i]**(1/3)
-        distance_edges=fast_edges(d0*0.75,d0*3,nbins_distances+1)
+        distance_edges=fast_edges(d0*0.65,d0*3.1,nbins_distances+1)
         distances=calc_distances(np.array(neighborlist[i],dtype=np.int32),datapoints)/d0
         hist_distances[idx]=fast_hist(distances,distance_edges)
     return hist_distances
@@ -235,37 +235,82 @@ def fast_edges(minval,maxval,num_edges):
 def calc_minkowski_eigenvalues(total_area,voro_areas,normvecs):
     tensor=np.zeros((6,6),dtype=np.float64)
     sqrt2=1.4142135623730951
-    for i in range(voro_areas.shape[0]):
-        a=voro_areas[i]
-        n=normvecs[i]
-        tensor[0,0]+=a*n[0]*n[0]*n[0]*n[0]
-        tensor[1,0]+=a*n[0]*n[0]*n[1]*n[1]
-        tensor[2,0]+=a*n[0]*n[0]*n[2]*n[2]
-        tensor[3,0]+=sqrt2*a*n[0]*n[0]*n[1]*n[2]
-        tensor[4,0]+=sqrt2*a*n[0]*n[0]*n[2]*n[0]
-        tensor[5,0]+=sqrt2*a*n[0]*n[0]*n[0]*n[1]
+    
+    t=np.zeros((3,3,3,3),dtype=np.float64)
+    for f in range(voro_areas.shape[0]):
+        for i in range(3):
+            for j in range(3):
+                for k in range(3):
+                    for l in range(3):
+                        a=voro_areas[f]
+                        n=normvecs[f]
+                        t[i,j,k,l]+=a*n[i]*n[j]*n[k]*n[l]
+    
+    t/=total_area
+    
+    tensor[0,0]=t[0,0,0,0]
+    tensor[1,0]=t[1,1,0,0]
+    tensor[2,0]=t[2,2,0,0]
+    tensor[3,0]=sqrt2*t[1,2,0,0]
+    tensor[4,0]=sqrt2*t[0,2,0,0]
+    tensor[5,0]=sqrt2*t[0,1,0,0]
+    
+    tensor[1,1]=t[1,1,1,1]
+    tensor[2,1]=t[2,2,1,1]
+    tensor[3,1]+=sqrt2*t[1,2,1,1]
+    tensor[4,1]+=sqrt2*t[0,2,1,1]
+    tensor[5,1]+=sqrt2*t[0,1,1,1]
+    
+    tensor[2,2]+=t[2,2,2,2]
+    tensor[3,2]+=sqrt2*t[1,2,2,2]
+    tensor[4,2]+=sqrt2*t[0,2,2,2]
+    tensor[5,2]+=sqrt2*t[0,1,2,2]
+    
+    tensor[3,3]+=2*t[1,2,1,2]
+    tensor[4,3]+=2*t[0,2,1,2]
+    tensor[5,3]+=2*t[0,1,1,2]
+    
+    tensor[4,4]+=2*t[0,2,0,2]
+    tensor[5,4]+=2*t[0,1,0,2]
+    
+    tensor[5,5]+=2*t[0,1,0,1]
+    
+    
+#    for i in range(voro_areas.shape[0]):
+#        a=voro_areas[i]
+#        n=normvecs[i]
+#        
         
-        tensor[1,1]+=a*n[1]*n[1]*n[1]*n[1]
-        tensor[2,1]+=a*n[1]*n[1]*n[2]*n[2]
-        tensor[3,1]+=sqrt2*a*n[1]*n[1]*n[1]*n[2]
-        tensor[4,1]+=sqrt2*a*n[1]*n[1]*n[2]*n[0]
-        tensor[5,1]+=sqrt2*a*n[1]*n[1]*n[0]*n[1]
         
-        tensor[2,2]+=a*n[2]*n[2]*n[2]*n[2]
-        tensor[3,2]+=sqrt2*a*n[2]*n[2]*n[1]*n[2]
-        tensor[4,2]+=sqrt2*a*n[2]*n[2]*n[2]*n[0]
-        tensor[5,2]+=sqrt2*a*n[2]*n[2]*n[0]*n[1]
-        
-        tensor[3,3]+=2*a*n[1]*n[2]*n[1]*n[2]
-        tensor[4,3]+=2*a*n[1]*n[2]*n[2]*n[0]
-        tensor[5,3]+=2*a*n[1]*n[2]*n[0]*n[1]
-        
-        tensor[4,4]+=2*a*n[2]*n[0]*n[2]*n[0]
-        tensor[5,4]+=2*a*n[2]*n[0]*n[0]*n[1]
-        
-        tensor[5,5]+=2*a*n[0]*n[1]*n[0]*n[1]
+#        tensor[0,0]+=a*n[0]*n[0]*n[0]*n[0]
+#        tensor[1,0]+=a*n[0]*n[0]*n[1]*n[1]
+#        tensor[2,0]+=a*n[0]*n[0]*n[2]*n[2]
+#        tensor[3,0]+=sqrt2*a*n[0]*n[0]*n[1]*n[2]
+#        tensor[4,0]+=sqrt2*a*n[0]*n[0]*n[2]*n[0]
+#        tensor[5,0]+=sqrt2*a*n[0]*n[0]*n[0]*n[1]
+#        
+#        tensor[1,1]+=a*n[1]*n[1]*n[1]*n[1]
+#        tensor[2,1]+=a*n[1]*n[1]*n[2]*n[2]
+#        tensor[3,1]+=sqrt2*a*n[1]*n[1]*n[1]*n[2]
+#        tensor[4,1]+=sqrt2*a*n[1]*n[1]*n[2]*n[0]
+#        tensor[5,1]+=sqrt2*a*n[1]*n[1]*n[0]*n[1]
+#        
+#        tensor[2,2]+=a*n[2]*n[2]*n[2]*n[2]
+#        tensor[3,2]+=sqrt2*a*n[2]*n[2]*n[1]*n[2]
+#        tensor[4,2]+=sqrt2*a*n[2]*n[2]*n[2]*n[0]
+#        tensor[5,2]+=sqrt2*a*n[2]*n[2]*n[0]*n[1]
+#        
+#        tensor[3,3]+=2*a*n[1]*n[2]*n[1]*n[2]
+#        tensor[4,3]+=2*a*n[1]*n[2]*n[2]*n[0]
+#        tensor[5,3]+=2*a*n[1]*n[2]*n[0]*n[1]
+#        
+#        tensor[4,4]+=2*a*n[2]*n[0]*n[2]*n[0]
+#        #tensor[5,4]+=2*a*n[2]*n[0]*n[0]*n[1]
+#        tensor[4,4]+=2*a*n[2]*n[0]*n[0]*n[1]
+#        
+#        tensor[5,5]+=2*a*n[0]*n[1]*n[0]*n[1]
 
-    tensor/=total_area
+#    tensor/=total_area
     eigenvalues=np.linalg.eigvalsh(tensor)
     
     return eigenvalues

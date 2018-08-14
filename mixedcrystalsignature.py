@@ -15,7 +15,7 @@ from functools import partial
 class MixedCrystalSignature:
     """ This is the docstring """
 
-    L_VEC=np.array([4,6],dtype=np.int32)
+    L_VEC=np.array([4,5,6],dtype=np.int32)
     #L_VEC=np.array([4,6],dtype=np.int32)
     MAX_L=np.max(L_VEC)
 
@@ -148,7 +148,8 @@ class MixedCrystalSignature:
         wigner_arr,m_arr,count_arr=calc.calc_wigner3j_general(self.L_VEC)
         wl_array=calc.calc_wls_from_qlm_arrays(self.L_VEC,self.qlm_arrays[self.solid_indices],wigner_arr,m_arr,count_arr).transpose()
         for l in self.L_VEC:
-            self.signature['w{:d}'.format(l)]=wl_array[self.L_VEC==l][0]
+            if l%2==0: #odd number w_l are useless
+                self.signature['w{:d}'.format(l)]=wl_array[self.L_VEC==l][0]
     
     def calc_bond_angles(self):
         bond_angles=calc.calc_bond_angles(self.solid_indices,self.neighborlist,self.datapoints)
@@ -172,11 +173,12 @@ class MixedCrystalSignature:
 
     def calc_signature(self):
         self.signature=pd.DataFrame()
+        
         self.calc_qlm_array()
         self.calc_struct_order()
         self.calc_num_neigh()
-        self.calc_msm()
         self.calc_bond_angles()
+        self.calc_msm()
         self.calc_minkowski_eigvals()
         self.calc_hist_distances()
 
@@ -185,7 +187,7 @@ if __name__ == '__main__':
     import multiprocessing as mp
     
     size=[15,15,15]
-    datapoints=gc.fill_volume_bcc(size[0], size[1], size[2])
+    datapoints=gc.fill_volume_hcp(size[0], size[1], size[2])
     volume=[[2,size[i]-2] for i in range(3)]
     
     mcs=MixedCrystalSignature(pool=mp.Pool(6))
