@@ -13,3 +13,5 @@ yappitest.py
 tmp_test\.pkl
 
 tmp_train\.pkl
+
+\.ipynb_checkpoints/
