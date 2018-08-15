@@ -92,9 +92,8 @@ def calc_si(l, qlms, len_neigh, qlms_neigh):
 def calc_qls_from_qlm_arrays(l_vec, qlm_arrays):
     "calculates the final ql (over all m) from qlm data"
     len_l = l_vec.shape[0]
-    
     result = np.zeros((qlm_arrays.shape[0], len_l), dtype=np.float64)
-    
+
     for i in range(qlm_arrays.shape[0]):
         j = 0
         m = 0
@@ -104,7 +103,7 @@ def calc_qls_from_qlm_arrays(l_vec, qlm_arrays):
         for j in range(len_l):
             l = l_vec[j]
             qlm_sum = 0.
-            
+
             for m in range(-l, l+1):
                 qlm_sum += abs(qlm_arrays[i, index_l+m+l])**2
             result[i, j] = sqrt(4.*pi/(2.*l+1)*qlm_sum)
@@ -112,205 +111,175 @@ def calc_qls_from_qlm_arrays(l_vec, qlm_arrays):
 
     return result
 
-@numba.njit(numba.float64[:, :](numba.int32[:], numba.complex128[:, :],numba.float64[:],numba.int32[:,:],numba.int32[:]))
-def calc_wls_from_qlm_arrays(l_vec, qlm_arrays,wigner_arr,m_arr,count_arr):
+@numba.njit(numba.float64[:, :](numba.int32[:], numba.complex128[:, :], numba.float64[:], numba.int32[:, :], numba.int32[:]))
+def calc_wls_from_qlm_arrays(l_vec, qlm_arrays, wigner_arr, m_arr, count_arr):
     "calculates the final ql (over all m) from qlm data"
     len_l = l_vec.shape[0]
-    
     result = np.zeros((qlm_arrays.shape[0], len_l), dtype=np.float64)
 
     for i in range(qlm_arrays.shape[0]):
-        prevcount=0
-        index_l=0
+        prevcount = 0
+        index_l = 0
         for j in range(len_l):
             l = l_vec[j]
-            w=0.+0*1j
-            for k in range(prevcount,count_arr[j]):
-                w+=wigner_arr[k]*qlm_arrays[i][m_arr[k,0]]*qlm_arrays[i][m_arr[k,1]]*qlm_arrays[i][m_arr[k,2]]
-            
-            qlm_sum=0
+            w = 0.+0*1j
+            for k in range(prevcount, count_arr[j]):
+                w += wigner_arr[k]*qlm_arrays[i][m_arr[k, 0]]*qlm_arrays[i][m_arr[k, 1]]*qlm_arrays[i][m_arr[k, 2]]
+
+            qlm_sum = 0
             for m in range(-l, l+1):
                 qlm_sum += abs(qlm_arrays[i, index_l+m+l])**2
-            qlm_sum=qlm_sum**(3/2)
-            w=w/qlm_sum
-            result[i,j]=w.real
-            prevcount=count_arr[j]
+            qlm_sum = qlm_sum**(3/2)
+            w = w/qlm_sum
+            result[i, j] = w.real
+            prevcount = count_arr[j]
             index_l += 2*l+1
 
     return result
 
 def calc_wigner3j_general(l_vec):
-    wignerlist=[]
-    mlist=[]
-    index_l=0
-    count=0
-    countlist=[]
+    """Cached computation of needed Wigner-3J symbols using sympy"""
+    wignerlist = []
+    mlist = []
+    index_l = 0
+    count = 0
+    countlist = []
     for j in range(l_vec.shape[0]):
         l = l_vec[j]
-        for m1 in range(-l,l+1):
-            for m2 in range(-l,l+1):
-                for m3 in range(-l,l+1):
+        for m1 in range(-l, l+1):
+            for m2 in range(-l, l+1):
+                for m3 in range(-l, l+1):
                     if m1+m2+m3 == 0:
-                        m1_new=index_l+m1+l
-                        m2_new=index_l+m2+l
-                        m3_new=index_l+m3+l
-                        wigner=float(N(wigner_3j(l,l,l,m1,m2,m3)))
+                        m1_new = index_l+m1+l
+                        m2_new = index_l+m2+l
+                        m3_new = index_l+m3+l
+                        wigner = float(N(wigner_3j(l, l, l, m1, m2, m3)))
                         wignerlist.append(wigner)
-                        mlist.append([m1_new,m2_new,m3_new])
-                        count+=1
+                        mlist.append([m1_new, m2_new, m3_new])
+                        count += 1
         index_l += 2*l+1
         countlist.append(count)
-    return np.array(wignerlist,dtype=np.float64),np.array(mlist,dtype=np.int32),np.array(countlist,dtype=np.int32)
+    return np.array(wignerlist, dtype=np.float64), np.array(mlist, dtype=np.int32), np.array(countlist, dtype=np.int32)
 
-@numba.njit(numba.float64[:](numba.int32[:],numba.float64[:,:],numba.float64[:]))
-def calc_angles(neighbors,datapoints,centerpoint):
-    n_neighbors=len(neighbors)
-    angles=np.zeros((n_neighbors*(n_neighbors-1)//2),dtype=np.float64)
-    count=0
+@numba.njit(numba.float64[:](numba.int32[:], numba.float64[:, :], numba.float64[:]))
+def calc_angles(neighbors, datapoints, centerpoint):
+    """jit compiled calculation of angles between neighbors"""
+    n_neighbors = len(neighbors)
+    angles = np.zeros((n_neighbors*(n_neighbors-1)//2), dtype=np.float64)
+    count = 0
     for j in range(n_neighbors):
-        for k in range(j+1,n_neighbors):
-            idx1=neighbors[j]
-            idx2=neighbors[k]
-            numerator=0.
-            sum_u=0.
-            sum_v=0.
+        for k in range(j+1, n_neighbors):
+            idx1 = neighbors[j]
+            idx2 = neighbors[k]
+            numerator = 0.
+            sum_u = 0.
+            sum_v = 0.
             for l in range(3):
-                u=datapoints[idx1,l]-centerpoint[l]
-                v=datapoints[idx2,l]-centerpoint[l]
-                numerator+=u*v
-                sum_u+=u**2
-                sum_v+=v**2
-            angles[count]=numerator/(sqrt(sum_u*sum_v))
-            count+=1
+                u = datapoints[idx1, l]-centerpoint[l]
+                v = datapoints[idx2, l]-centerpoint[l]
+                numerator += u*v
+                sum_u += u**2
+                sum_v += v**2
+            angles[count] = numerator/(sqrt(sum_u*sum_v))
+            count += 1
     return angles
 
-def calc_bond_angles(indices,neighborlist,datapoints):
-    angle_edges=np.array([-1.05, -0.945, -0.915, -0.755, -0.195, 0.195, 0.245, 0.795, 1.05])
-    bond_angles=np.zeros((indices.shape[0],angle_edges.shape[0]-1),dtype=np.int32)
-    
+def calc_bond_angles(indices, neighborlist, datapoints):
+    """calculates bond angles for all points in indices"""
+    angle_edges = np.array([-1.05, -0.945, -0.915, -0.755, -0.195, 0.195, 0.245, 0.795, 1.05])
+    bond_angles = np.zeros((indices.shape[0], angle_edges.shape[0]-1), dtype=np.int32)
+
     for idx in range(indices.shape[0]):
-        i=indices[idx]
-        angles=calc_angles(np.array(neighborlist[i],dtype=np.int32),datapoints,datapoints[i])
-        bond_angles[idx]=fast_hist(angles,angle_edges)
+        i = indices[idx]
+        angles = calc_angles(np.array(neighborlist[i], dtype=np.int32), datapoints, datapoints[i])
+        bond_angles[idx] = fast_hist(angles, angle_edges)
     return bond_angles
 
-@numba.njit(numba.float64[:](numba.int32[:],numba.float64[:,:]))
-def calc_distances(neighbors,datapoints):
-    n_neighbors=len(neighbors)
-    distances=np.zeros((n_neighbors*(n_neighbors-1)//2),dtype=np.float64)
-    count=0
+@numba.njit(numba.float64[:](numba.int32[:], numba.float64[:, :]))
+def calc_distances(neighbors, datapoints):
+    """jit compiled calculation of distances between neighbors"""
+    n_neighbors = len(neighbors)
+    distances = np.zeros((n_neighbors*(n_neighbors-1)//2), dtype=np.float64)
+    count = 0
     for j in range(n_neighbors):
-        for k in range(j+1,n_neighbors):
-            idx1=neighbors[j]
-            idx2=neighbors[k]
-            normsq=0.
+        for k in range(j+1, n_neighbors):
+            idx1 = neighbors[j]
+            idx2 = neighbors[k]
+            normsq = 0.
             for l in range(3):
-                normsq+=(datapoints[idx1,l]-datapoints[idx2,l])**2
-            distances[count]=sqrt(normsq)
-            count+=1
+                normsq += (datapoints[idx1, l]-datapoints[idx2, l])**2
+            distances[count] = sqrt(normsq)
+            count += 1
     return distances
 
-def calc_hist_distances(indices,neighborlist,datapoints,volumes):
-    nbins_distances=12
-    hist_distances=np.zeros((indices.shape[0],nbins_distances),dtype=np.int32)
-    
+def calc_hist_distances(indices, neighborlist, datapoints, volumes):
+    """calculate distance histograms between neighbors for all points in indices"""
+    nbins_distances = 12
+    hist_distances = np.zeros((indices.shape[0], nbins_distances), dtype=np.int32)
+
     for idx in range(indices.shape[0]):
-        i=indices[idx]
-        d0=volumes[i]**(1/3)
-        distance_edges=fast_edges(d0*0.65,d0*3.1,nbins_distances+1)
-        distances=calc_distances(np.array(neighborlist[i],dtype=np.int32),datapoints)/d0
-        hist_distances[idx]=fast_hist(distances,distance_edges)
+        i = indices[idx]
+        d0 = volumes[i]**(1/3)
+        distance_edges = fast_edges(d0*0.65, d0*3.1, nbins_distances+1)
+        distances = calc_distances(np.array(neighborlist[i], dtype=np.int32), datapoints)/d0
+        hist_distances[idx] = fast_hist(distances, distance_edges)
     return hist_distances
 
-@numba.njit(numba.int32[:](numba.float64[:],numba.float64[:]))
+@numba.njit(numba.int32[:](numba.float64[:], numba.float64[:]))
 def fast_hist(data, bin_edges):
-    hist,_=np.histogram(data,bin_edges)
+    """jit compiled version of histogram"""
+    hist, _ = np.histogram(data, bin_edges)
     return hist.astype(np.int32)
 
-@numba.njit(numba.float64[:](numba.float64,numba.float64,numba.int64))
-def fast_edges(minval,maxval,num_edges):
-    return np.linspace(minval,maxval,num_edges)
+@numba.njit(numba.float64[:](numba.float64, numba.float64, numba.int64))
+def fast_edges(minval, maxval, num_edges):
+    """jit compiled version of linspace"""
+    return np.linspace(minval, maxval, num_edges)
 
-@numba.njit(numba.float64[:](numba.float64,numba.float64[:],numba.float64[:,:]))
-def calc_minkowski_eigenvalues(total_area,voro_areas,normvecs):
-    tensor=np.zeros((6,6),dtype=np.float64)
-    sqrt2=1.4142135623730951
-    
-    t=np.zeros((3,3,3,3),dtype=np.float64)
+@numba.njit(numba.float64[:](numba.float64, numba.float64[:], numba.float64[:, :]))
+def calc_minkowski_eigenvalues(total_area, voro_areas, normvecs):
+    """jit compiled calculation of rank 4 minkowski tensor W1(0,4)
+    more on this in: https://doi.org/10.1103/PhysRevE.85.030301"""
+    tensor = np.zeros((6, 6), dtype=np.float64)
+    sqrt2 = 1.4142135623730951
+
+    t = np.zeros((3, 3, 3, 3), dtype=np.float64)
     for f in range(voro_areas.shape[0]):
         for i in range(3):
             for j in range(3):
                 for k in range(3):
                     for l in range(3):
-                        a=voro_areas[f]
-                        n=normvecs[f]
-                        t[i,j,k,l]+=a*n[i]*n[j]*n[k]*n[l]
-    
-    t/=total_area
-    
-    tensor[0,0]=t[0,0,0,0]
-    tensor[1,0]=t[1,1,0,0]
-    tensor[2,0]=t[2,2,0,0]
-    tensor[3,0]=sqrt2*t[1,2,0,0]
-    tensor[4,0]=sqrt2*t[0,2,0,0]
-    tensor[5,0]=sqrt2*t[0,1,0,0]
-    
-    tensor[1,1]=t[1,1,1,1]
-    tensor[2,1]=t[2,2,1,1]
-    tensor[3,1]+=sqrt2*t[1,2,1,1]
-    tensor[4,1]+=sqrt2*t[0,2,1,1]
-    tensor[5,1]+=sqrt2*t[0,1,1,1]
-    
-    tensor[2,2]+=t[2,2,2,2]
-    tensor[3,2]+=sqrt2*t[1,2,2,2]
-    tensor[4,2]+=sqrt2*t[0,2,2,2]
-    tensor[5,2]+=sqrt2*t[0,1,2,2]
-    
-    tensor[3,3]+=2*t[1,2,1,2]
-    tensor[4,3]+=2*t[0,2,1,2]
-    tensor[5,3]+=2*t[0,1,1,2]
-    
-    tensor[4,4]+=2*t[0,2,0,2]
-    tensor[5,4]+=2*t[0,1,0,2]
-    
-    tensor[5,5]+=2*t[0,1,0,1]
-    
-    
-#    for i in range(voro_areas.shape[0]):
-#        a=voro_areas[i]
-#        n=normvecs[i]
-#        
-        
-        
-#        tensor[0,0]+=a*n[0]*n[0]*n[0]*n[0]
-#        tensor[1,0]+=a*n[0]*n[0]*n[1]*n[1]
-#        tensor[2,0]+=a*n[0]*n[0]*n[2]*n[2]
-#        tensor[3,0]+=sqrt2*a*n[0]*n[0]*n[1]*n[2]
-#        tensor[4,0]+=sqrt2*a*n[0]*n[0]*n[2]*n[0]
-#        tensor[5,0]+=sqrt2*a*n[0]*n[0]*n[0]*n[1]
-#        
-#        tensor[1,1]+=a*n[1]*n[1]*n[1]*n[1]
-#        tensor[2,1]+=a*n[1]*n[1]*n[2]*n[2]
-#        tensor[3,1]+=sqrt2*a*n[1]*n[1]*n[1]*n[2]
-#        tensor[4,1]+=sqrt2*a*n[1]*n[1]*n[2]*n[0]
-#        tensor[5,1]+=sqrt2*a*n[1]*n[1]*n[0]*n[1]
-#        
-#        tensor[2,2]+=a*n[2]*n[2]*n[2]*n[2]
-#        tensor[3,2]+=sqrt2*a*n[2]*n[2]*n[1]*n[2]
-#        tensor[4,2]+=sqrt2*a*n[2]*n[2]*n[2]*n[0]
-#        tensor[5,2]+=sqrt2*a*n[2]*n[2]*n[0]*n[1]
-#        
-#        tensor[3,3]+=2*a*n[1]*n[2]*n[1]*n[2]
-#        tensor[4,3]+=2*a*n[1]*n[2]*n[2]*n[0]
-#        tensor[5,3]+=2*a*n[1]*n[2]*n[0]*n[1]
-#        
-#        tensor[4,4]+=2*a*n[2]*n[0]*n[2]*n[0]
-#        #tensor[5,4]+=2*a*n[2]*n[0]*n[0]*n[1]
-#        tensor[4,4]+=2*a*n[2]*n[0]*n[0]*n[1]
-#        
-#        tensor[5,5]+=2*a*n[0]*n[1]*n[0]*n[1]
+                        a = voro_areas[f]
+                        n = normvecs[f]
+                        t[i, j, k, l] += a*n[i]*n[j]*n[k]*n[l]
+    t /= total_area
 
-#    tensor/=total_area
-    eigenvalues=np.linalg.eigvalsh(tensor)
-    
-    return eigenvalues
+    #write the tensor in Mandel notation (a version of Voigt notation)
+    tensor[0, 0] = t[0, 0, 0, 0]
+    tensor[1, 0] = t[1, 1, 0, 0]
+    tensor[2, 0] = t[2, 2, 0, 0]
+    tensor[3, 0] = sqrt2*t[1, 2, 0, 0]
+    tensor[4, 0] = sqrt2*t[0, 2, 0, 0]
+    tensor[5, 0] = sqrt2*t[0, 1, 0, 0]
+
+    tensor[1, 1] = t[1, 1, 1, 1]
+    tensor[2, 1] = t[2, 2, 1, 1]
+    tensor[3, 1] += sqrt2*t[1, 2, 1, 1]
+    tensor[4, 1] += sqrt2*t[0, 2, 1, 1]
+    tensor[5, 1] += sqrt2*t[0, 1, 1, 1]
+
+    tensor[2, 2] += t[2, 2, 2, 2]
+    tensor[3, 2] += sqrt2*t[1, 2, 2, 2]
+    tensor[4, 2] += sqrt2*t[0, 2, 2, 2]
+    tensor[5, 2] += sqrt2*t[0, 1, 2, 2]
+
+    tensor[3, 3] += 2*t[1, 2, 1, 2]
+    tensor[4, 3] += 2*t[0, 2, 1, 2]
+    tensor[5, 3] += 2*t[0, 1, 1, 2]
+
+    tensor[4, 4] += 2*t[0, 2, 0, 2]
+    tensor[5, 4] += 2*t[0, 1, 0, 2]
+
+    tensor[5, 5] += 2*t[0, 1, 0, 1]
+
+    return np.linalg.eigvalsh(tensor)
