@@ -27,4 +27,5 @@ If requested, I might create a complete Anaconda package for this repository.
 
 # Citation
 If you use this package for a publication, we would be very happy to be cited:
+
 Dietz, C., T. Kretz, and M. H. Thoma. "Machine-learning approach for local classification of crystalline structures in multiphase systems." *Physical Review E* 96.1 (2017): 011301.
