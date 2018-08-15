@@ -15,7 +15,7 @@ Program to locally classify crystalline structures in 3D pointcloud data as retr
 - Scikit-learn
 - Pandas
 - Sympy
-- Numba (required)
+- Numba
 - Multiprocessing (optional)
 
 # Installation
