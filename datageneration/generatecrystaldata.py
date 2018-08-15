@@ -96,39 +96,3 @@ def fill_volume_hcp(x_space, y_space, z_space):
                      (crystal[:, 1] <= y_space)&
                      (crystal[:, 2] <= z_space))
     return crystal[condition]
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
-
-
-    bcctest = fill_volume_bcc(5, 5, 5)
-    fcctest = fill_volume_fcc(5, 5, 5)
-    hcptest = fill_volume_hcp(5, 5, 5)
-    
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(bcctest[:, 0], bcctest[:, 1], bcctest[:, 2])
-    ax.set_title('bcc')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(fcctest[:, 0], fcctest[:, 1], fcctest[:, 2])
-    ax.set_title('fcc')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(hcptest[:, 0], hcptest[:, 1], hcptest[:, 2])
-    ax.set_title('hcp')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-
-    plt.show()
