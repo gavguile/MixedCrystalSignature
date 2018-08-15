@@ -28,18 +28,13 @@ class CrystalAnalyzer:
     """Analyze Crystal Strucures"""
     train_seed=0
     test_seed=1
-    train_noiselist=list(range(3,15,1))
+    train_noiselist=list(range(4,12,1))
     noiselist=list(range(0,21))
     structure_arr=['fcc','hcp','bcc']
     labels2struct={'fcc':1,'hcp':2,'bcc':3}
     volume = [[0,0,0],[34,34,34]]
     #volume = [[0,0,0],[15,15,15]]
     inner_distance = 2
-    
-    traindatafilepath="tmp_train.pkl"
-    testdatafilepath="tmp_test.pkl"
-    classifierfilepath="tmp_classifier.pkl"
-    scalerfilepath="tmp_scaler.pkl"
     
     loglevel=3
     
@@ -76,7 +71,7 @@ class CrystalAnalyzer:
                 self.sign_calculator.set_datapoints(datapoints)
                 self.sign_calculator.set_inner_bool_vec(inner_bool_vec)
                 self.sign_calculator.calc_signature()
-                signatures[structure]['sign_arr'].append(self.sign_calculator.signature)
+                signatures[structure]['sign_arr'].append(self.sign_calculator.signature.values)
                 signatures[structure]['voro_vols'].append(self.sign_calculator.voro_vols)
                 signatures[structure]['softness'].append(self.sign_calculator.struct_order)
                 signatures[structure]['data_idx'].append(self.sign_calculator.solid_indices)
@@ -178,29 +173,29 @@ class CrystalAnalyzer:
         with open(filepath,'wb') as file:
             pickle.dump(objects,file)
             
-    def save_training_signatures(self):
-        self.save_object(self.train_signatures,self.traindatafilepath)
+    def save_training_signatures(self,path):
+        self.save_object(self.train_signatures,path)
         
-    def load_training_signatures(self):
-        self.train_signatures=self.load_object(self.traindatafilepath)
+    def load_training_signatures(self,path):
+        self.train_signatures=self.load_object(path)
         
-    def save_test_signatures(self):
-        self.save_object(self.test_signatures,self.testdatafilepath)
+    def save_test_signatures(self,path):
+        self.save_object(self.test_signatures,path)
         
-    def load_test_signatures(self):
-        self.test_signatures=self.load_object(self.testdatafilepath)
+    def load_test_signatures(self,path):
+        self.test_signatures=self.load_object(path)
     
-    def save_classifier(self):
-        self.save_object(self.classifier,self.classifierfilepath)
+    def save_classifier(self,path):
+        self.save_object(self.classifier,path)
     
-    def load_classifier(self):
-        self.classifier=self.load_object(self.classifierfilepath)
+    def load_classifier(self,path):
+        self.classifier=self.load_object(path)
         
-    def save_scaler(self):
-        self.save_object(self.scaler,self.scalerfilepath)
+    def save_scaler(self,path):
+        self.save_object(self.scaler,path)
     
-    def load_scaler(self):
-        self.scaler=self.load_object(self.scalerfilepath)
+    def load_scaler(self,path):
+        self.scaler=self.load_object(path)
     
     def train_classifier(self):
         if self.loglevel >=1:
@@ -209,15 +204,13 @@ class CrystalAnalyzer:
         
         self.trainmatrix, self.trainlabels, self.trainindex_dict=self.convert_artificial_signatures_to_matrix(self.train_signatures)
         
-        
-        self.trainmatrix=self.scaler.fit_transform(self.trainmatrix)
-        self.classifier.fit(self.trainmatrix,self.trainlabels)
+        self.classifier.fit(self.scaler.fit_transform(self.trainmatrix),self.trainlabels)
         
         if self.loglevel >=1:
             print('finished training, time:',time.time()-t)
         
         if self.loglevel >=3:
-            trainprediction=self.classifier.predict(self.trainmatrix)
+            trainprediction=self.classifier.predict(self.scaler.transform(self.trainmatrix))
             print('Accuracy on Train set:',
                   accuracy_score(trainprediction,self.trainlabels))
         
@@ -344,12 +337,14 @@ def plot_test_data(signatures,noiselist,labels2struct):
 if __name__ == '__main__':
     import matplotlib
     matplotlib.rcParams.update({'figure.autolayout': True})
+    from sklearn.ensemble import GradientBoostingClassifier
     
 #    filepath='pc_17112016_9h31m_10Pa.dump'
 #    logfilepath='pc_17112016_9h31m_10Pa.log'
 #    timesteps=list(range(200000,10000000,250000))
 #    inner_distance=53.7071
 #    mddata=get_md_data_dict(filepath, logfilepath, timesteps)
+
     
     import multiprocessing as mp
     
@@ -359,29 +354,32 @@ if __name__ == '__main__':
                                hidden_layer_sizes=(250,),
                                solver='adam',random_state=0, shuffle=True,
                                activation='relu',alpha=1e-4)
+    
+    #classifier=GradientBoostingClassifier()
+    
     scaler=StandardScaler()
     
     ca=CrystalAnalyzer(classifier,scaler,sign_calculator)
-    ca.generate_train_signatures()
-    ca.save_training_signatures()
-    ca.generate_test_signatures()
-    ca.save_test_signatures()
+#    ca.generate_train_signatures()
+#    ca.save_training_signatures("tmp_train.pkl")
+#    ca.generate_test_signatures()
+#    ca.save_test_signatures("tmp_test.pkl")
     
     sign_calculator.p.close()
     sign_calculator.p.join()
+#    
+    ca.load_training_signatures("tmp_train.pkl")
+#    ca.train_classifier()
+#    ca.save_classifier("tmp_classifier.pkl")
+#    ca.save_scaler("tmp_scaler.pkl")
     
-    ca.load_training_signatures()
-    ca.train_classifier()
-    ca.save_classifier()
-    ca.save_scaler()
-    
-    ca.load_scaler()
-    ca.load_classifier()
-    ca.load_test_signatures()
+    ca.load_scaler("tmp_scaler.pkl")
+    ca.load_classifier("tmp_classifier.pkl")
+    ca.load_test_signatures("tmp_test.pkl")
     ca.predict_test()
     
     fig2,ax2=plot_test_data(ca.test_signatures,ca.noiselist,ca.labels2struct)
-    
+#    
     
 #    ca.save_training_signatures()
     
