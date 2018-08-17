@@ -1,5 +1,5 @@
 # Mixed Crystal Signature
-A python program to locally classify crystalline structures in 3D pointcloud data as retrieved from moleculardynamical simulations, colloids or complex plasmas.
+Python 3 software to locally classify crystalline structures in 3D pointcloud data as retrieved from moleculardynamical simulations, colloids or complex plasmas.
 
 # Features
 - Calculation of a feature vector for local classification of crystalline structures as described in [Dietz et al.](https://doi.org/10.1103/PhysRevE.96.011301)
@@ -20,7 +20,7 @@ A python program to locally classify crystalline structures in 3D pointcloud dat
 
 # Installation
 - Download the repository.
-- Install the [anaconda](https://anaconda.org/) distribution
+- Install the [anaconda](https://anaconda.org/) Python 3 distribution
 - The package should work out of the box in a standard anaconda installation
 
 If requested, I might create a complete Anaconda package for this repository.
