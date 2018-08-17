@@ -20,8 +20,8 @@ A python program to locally classify crystalline structures in 3D pointcloud dat
 
 # Installation
 - Download the repository.
-- use Anaconda to install the dependencies. 
-- **done**
+- Install the [anaconda](https://anaconda.org/) distribution
+- The package should work out of the box in a standard anaconda installation
 
 If requested, I might create a complete Anaconda package for this repository.
 
